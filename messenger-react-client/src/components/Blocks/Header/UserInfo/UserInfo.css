@@ -1,0 +1,24 @@
+.UserInfo__image-rounded {
+    display: inline-block;
+    height: 40px;
+    width: 40px;
+    border-radius: 50%;
+    background-color: red;
+    margin-right: 8px;
+}
+
+.UserInfo__block {
+    display: flex;
+    position: relative;
+    align-items: center;
+}
+
+.UserInfo__credentials {
+    margin-right: 8px;
+}
+
+.UserInfo__options {
+    position: absolute;
+    top: 100%;
+    z-index: 10;
+}

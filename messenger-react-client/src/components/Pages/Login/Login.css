@@ -1,0 +1,24 @@
+.login-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center
+}
+
+.margin-top- {
+    &s {
+        margin-top:4px;
+    }
+
+    &m {
+        margin-top: 8px;
+    }
+
+    &l {
+        margin-top: 16px;
+    }
+}
+
+.margin-top-m {
+    margin-top: 16px;
+}

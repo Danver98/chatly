@@ -1,0 +1,79 @@
+{
+  "name": "messenger-react-client",
+  "version": "0.1.0",
+  "private": false,
+  "type": "module",
+  "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@fingerprintjs/fingerprintjs": "^5.2.0",
+    "@fontsource/leckerli-one": "^5.3.0",
+    "@fontsource/roboto": "^5.2.10",
+    "@mui/icons-material": "^9.0.0",
+    "@mui/material": "^9.0.0",
+    "@stomp/stompjs": "^7.3.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^25.6.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "mkcert": "^3.2.0",
+    "net": "^1.0.2",
+    "react": "^19.2.5",
+    "react-bus": "^4.0.1",
+    "react-dom": "^19.2.5",
+    "react-hot-toast": "^2.6.0",
+    "react-intersection-observer": "^10.0.3",
+    "react-lorem-ipsum": "^1.4.10",
+    "react-router-dom": "^7.14.1",
+    "react-stomp": "^5.1.0",
+    "react-stomp-hooks": "^3.0.1",
+    "reactjs-popup": "^2.0.6",
+    "sockjs-client": "^1.6.1",
+    "sonner": "^2.0.8",
+    "stompjs": "^2.3.3",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3",
+    "use-file-picker": "^2.1.4",
+    "web-vitals": "^5.2.0",
+    "websocket": "^1.0.35",
+    "zustand": "^5.0.15"
+  },
+  "scripts": {
+    "dev": "vite",
+    "start": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@vitejs/plugin-react": "^6.1.1",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.12.0",
+    "typescript-eslint": "^8.71.0",
+    "vite": "^8.3.0",
+    "vite-tsconfig-paths": "^6.1.1"
+  }
+}

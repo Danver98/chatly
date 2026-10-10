@@ -1,0 +1,22 @@
+.profile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 50%;
+    padding: 8px 8px 8px 8px;
+    background-color: antiquewhite;
+}
+
+.profile__header {
+    display: flex;
+    width: 100%;
+    justify-content: flex-end;
+    margin-bottom: 8px;
+}
+
+.profile__content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}

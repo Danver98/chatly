@@ -1,0 +1,403 @@
+@import "/src/index.css";
+
+/* min-width: 0 lets this flex item shrink below its content's
+    min-content width. Without it, long nowrap text in the chat
+    list forces the whole layout wider than the viewport. */
+.chat-page {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+    width: 100%;
+    background-color: #ffffff;
+}
+
+.chat-dashboard {
+    display: flex;
+    min-height: 0px;
+    min-width: 0;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+.chat-dashboard__left {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    min-width: 0;
+    height: 100%;
+    width: 30%;
+    max-width: 30%;
+    overflow: hidden;
+    border-right: 1px solid rgb(213, 218, 217);
+}
+
+.chat-dashboard__right {
+    display: flex;
+    min-height: 0px;
+    min-width: 0;
+    height: 100%;
+    width: 70%;
+    max-width: 70%;
+    overflow: hidden;
+}
+
+.chat-list {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0px;
+    min-width: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 0px;
+    background-color: #ffffff;
+}
+
+.chat-list-item {
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    padding: 4px;
+    background-color: rgb(255, 255, 255);
+    box-shadow: 0px 0px 1px 1px rgb(213, 218, 217);
+}
+
+.chat-list-item__image {
+    display: inline-block;
+    height: 70px;
+    width: 70px;
+    border-radius: 50%;
+}
+
+.chat-list-item__info {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    height: 100%;
+    min-width: 0;
+}
+
+.chat-list-item__nameDate {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+    min-width: 0;
+}
+
+.chat-list-item__name {
+    display: block;
+    flex-grow: 1;
+    margin-left: 8px;
+    color: #333333;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.chat-list-item__date {
+    font-size: small;
+    flex-shrink: 0;
+}
+
+.chat-list-item__messageInfo {
+    display: flex;
+    min-width: 0;
+    justify-content: space-between;
+    align-items: center;
+    overflow: hidden;
+}
+
+.chat-list-item__lastMessage {
+    display: block;
+    flex: 1 1 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    min-width: 0px;
+    margin-right: 2px;
+    margin-left: 8px;
+}
+
+.chat-list-item__lastMessage-author {
+    color: rgb(25, 118, 210);
+}
+
+.chat-list-item__lastMessage-service {
+    color: #787878;
+}
+
+.chat-list-item__messageCounter {
+    display: flex;
+    height: 100%;
+    flex-shrink: 0;
+}
+
+.chat-list-item__messageCounter-round {
+    height: 30px;
+    background-color: #8C8C8C;
+    border-radius: 50%;
+    display: flex;
+    /* or inline-flex */
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1 / 1;
+    padding: 2px;
+}
+
+.chat-room-page {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    background-image: url('../../../assets/background/wallpaper (2).jpg');
+}
+
+.chat-room-page__CentralBlock {
+    display: flex;
+    flex-direction: column;
+    width: 60%;
+    min-height: 0px;
+    height: 100%;
+    align-items: center;
+    position: relative;
+}
+
+.chat-room-page-header {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    background-color: #ffffff;
+    padding: 4px 0px;
+}
+
+.chat-room-page-header__ChatName {
+    display: flex;
+    font-size: 18px;
+    flex-grow: 2;
+    align-items: center;
+    justify-content: center;
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    background-color: #ffffff;
+    margin-right: 8px;
+}
+
+.chat-room-page__AddParticipantsBtn {
+    display: flex;
+    height: 55px;
+    width: 55px;
+    border-radius: 50%;
+    align-items: center;
+    justify-content: center;
+}
+
+.chat-room-page__unreadMsgCounter_Box {
+    display: flex;
+    flex-direction: column;
+}
+
+.chat-room__empty {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
+    background-image: url('../../../assets/background/wallpaper (2).jpg');
+}
+
+.chat-room-message-list {
+    display: flex;
+    flex-direction: column-reverse;
+    flex: 1 1 auto;
+    min-height: 0px;
+    min-width: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin-bottom: 0px;
+    width: 100%;
+    /* padding-left: 0px; */
+}
+
+.chat-room__unreadMsgCounter {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+}
+
+.chat-room-message-list-empty {
+    display: flex;
+    flex-direction: column-reverse;
+    flex: 1 1 auto;
+    justify-content: center;
+    align-items: center;
+}
+
+.message-list-item {
+    display: flex;
+    padding: 0px 16px 0px 0px;
+    min-width: 0;
+    box-shadow: 3px 0px 5px 1px rgb(213, 218, 217);
+
+    &:focus-visible {
+        outline: none;
+    }
+}
+
+.message-list-item_container {
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+    padding: 8px 0px 8px 0px;
+}
+
+.align-items-left {
+    display: flex;
+    align-items: flex-start;
+}
+
+.align-items-right {
+    display: flex;
+    align-items: flex-end;
+}
+
+.message-list-item__userBlock {
+    display: flex;
+    height: 100%;
+    align-items: flex-end;
+    margin-right: 16px;
+}
+
+.message-list-item__userImage {
+    display: inline-block;
+    height: 50px;
+    width: 50px;
+    border-radius: 50%;
+}
+
+.message-list-item__messageBlock {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.message-list-item__messageBlock-date {
+    display: flex;
+    flex: 1 1 auto;
+    justify-content: flex-end;
+}
+
+.message-list-item__UserName {
+    font: bold 1.0rem "Roboto", sans-serif;
+}
+
+.message-list-item__messageData {
+    margin: 0px;
+}
+
+.message-list-item_image {
+    height: 250px;
+    width: 250px;
+    margin-top: 4px;
+}
+
+.message-list-item_audio {
+    margin-top: 8px;
+}
+
+.message-list-item_video {
+    height: 250px;
+    width: 250px;
+    margin-top: 4px;
+}
+
+.message-list-item_file {
+    margin: 4px 0px 4px 0px;
+    height: 30px;
+    width: 30px;
+}
+
+.chat-room-message-sender__FormContainer {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+}
+
+.chat-room-message-sender__TextArea {
+    display: flex;
+    flex: 1 1 auto;
+    margin: 0px 16px 0px 8px;
+    border-radius: 5px;
+}
+
+.chat-room-message-sender__SendButton {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 60%;
+    min-width: 100px;
+    border-radius: 10px;
+    box-shadow: 0px 0px 10px 1px #46dffa;
+    background: linear-gradient(#46dffa, #8aedff);
+}
+
+.chat-room__newMsgDecorator {
+    line-height: 1em;
+    position: relative;
+    outline: 0;
+    border: 0;
+    color: black;
+    text-align: center;
+    height: 1.5em;
+    opacity: .5;
+
+    &:before {
+        content: '';
+        /* use the linear-gradient for the fading effect
+      use a solid background color for a solid bar */
+        background: linear-gradient(to right, transparent, #818078, transparent);
+        position: absolute;
+        left: 0;
+        top: 50%;
+        width: 100%;
+        height: 1px;
+    }
+
+    &:after {
+        content: attr(data-content);
+        position: relative;
+        display: inline-block;
+        color: black;
+
+        padding: 0 .5em;
+        line-height: 1.5em;
+        /* this is really the only tricky part, you need to specify the background color of the container element... */
+        color: #818078;
+        background-color: #fcfcfa;
+    }
+}
+
+.chat-room-edit {
+    display: flex;
+    flex-direction: column;
+    margin: 16px;
+}
+
+.chat-room-edit__form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    justify-content: center;
+    align-items: center;
+}

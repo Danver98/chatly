@@ -1,0 +1,20 @@
+.participant-selection-popup-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 0px;
+    padding: 0px 16px 0px 16px;
+}
+
+.participant-selection-popup__UserList {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0px;
+    overflow-y: auto;
+}
+
+.participant-selection-popup__Confirmation {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 4px;
+}

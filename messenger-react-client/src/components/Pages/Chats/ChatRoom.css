@@ -1,0 +1,11 @@
+.participant-selection-popup {
+    /* width: 900px;
+    height: 600px; */
+    background-color: rgb(227, 233, 233);
+}
+
+.participant-selection-popup-content-wrapper {
+    display: flex;
+    flex-direction: column;
+    padding: 0px 16px 0px 16px;
+}

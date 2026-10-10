@@ -1,0 +1,134 @@
+# Application
+application:
+    authentication:
+        enabled: true
+    authorization:
+        # Whether app should authorize user requests for resources and completing actions with them
+        enabled: true
+    permissions:
+        # Whether app should validate user access to resources and completing actions with them
+        enabled: true
+
+logging:
+    level:
+        root: DEBUG
+    file:
+        path: logs
+
+# JWT
+jwt:
+    exp-in-millis: 7200000 #7200000 15000
+    iss: ${APP_JWT_ISSUER}
+    secret: ${APP_JWT_BASE_SECRET}
+    sign-alg: HS256
+    refresh-token:
+        exp-in-millis: 604800000 # 604800000 - 1 week # 60000 - 1 minute
+        iss: ${APP_JWT_ISSUER}
+        secret: ${APP_JWT_REFRESH_KEY}
+        sign-alg: HS256
+    chat-invitation:
+        exp-in-millis: 604800000 # 1 week
+        iss: ${APP_JWT_ISSUER}
+        secret: ${APP_CHAT_INVITATION_JWT_KEY}
+        sign-alg: HS256
+
+# Secrets
+secrets:
+    encryption-util: ${APP_ENCRYPTION_UTIL_SECRET_KEY}
+
+# Server
+server:
+    compression:
+        enabled: true
+        mime-types: application/json,application/xml,text/html,text/xml,text/plain,multipart/form-data,application/octet-stream
+    http:
+        port: 8080
+    http2:
+        enabled: true
+    port: 8443
+    servlet:
+        context-path: /messenger/api/v1
+    ssl:
+        enabled: true
+        # In production move this data to secret vault
+        key-alias: messenger-service
+        key-store: classpath:keystore/messenger-service.p12
+        key-store-password: ${APP_SERVER_SSL_KEY_STORE_PASSWORD}
+        key-store-type: PKCS12
+
+
+# Spring
+spring:
+    devtools:
+        restart:
+            # This is a hack for casting UserDetails to CustomUserDetails class to prevent ClassCastException.
+            # Eligible in development only
+            enabled: false
+    data:
+        redis:
+            host: ${REDIS_HOST:localhost}
+            port: ${REDIS_PORT:6379}
+            timeout: 5000
+            server:
+                start-by-app: ${REDIS_START_BY_APP:false}
+    servlet:
+        multipart:
+            max-request-size: 50MB
+            max-file-size: 30MB
+    cache:
+        type: redis
+    datasource:
+        driver-class-name: org.postgresql.Driver
+        initialize: true
+        password: ${APP_DB_PASSWORD}
+        url: jdbc:postgresql://${APP_DB_HOST}:${APP_DB_PORT}/${APP_DB_NAME}
+        username: ${APP_DB_USERNAME}
+    jpa:
+        show-sql: true
+        hibernate:
+            ddl-auto: none
+    sql:
+        init:
+            mode: always
+    flyway:
+        enabled: true
+        driver-class-name: org.postgresql.Driver
+        url: jdbc:postgresql://${APP_DB_HOST}:${APP_DB_PORT}/${APP_DB_NAME}
+        user: ${APP_DB_USERNAME}
+        password: ${APP_DB_PASSWORD}
+        locations: classpath:db/migration/postgresql
+
+# S3
+s3:
+    # Storage
+    storage:
+        provider: minio # filebase or minio
+        endpoint: ${S3_ENDPOINT:http://localhost:9000} # https://s3.filebase.com
+        bucket: ${APP_S3_STORAGE_BUCKET_NAME}
+        region: us-east-1
+        signingRegion: us-east-1
+        access-key: ${MINIO_ROOT_USER}
+        secret-key: ${MINIO_ROOT_PASSWORD}
+
+# Certificate
+trust:
+    # In production move this data to secret vault
+    store: classpath:keystore/messenger-service.p12
+    store.password: ${APP_TRUST_STORE_PASSWORD}
+
+# Yandex Cloud
+yandex:
+    cloud:
+        object-storage:
+            account:
+                access:
+                    key:
+                        id: ${APP_YANDEX_CLOUD_STORAGE_ACCOUNT_ACCESS_KEY}
+                secret:
+                    key: ${APP_YANDEX_CLOUD_STORAGE_ACCOUNT_SECRET}
+            endpoint: https://storage.yandexcloud.net
+            bucket: ${APP_S3_STORAGE_BUCKET_NAME}
+    disk:
+        service:
+            access-token: ${APP_YANDEX_DISK_SERVICE_ACCESS_TOKEN}
+            refresh-token: aaa
