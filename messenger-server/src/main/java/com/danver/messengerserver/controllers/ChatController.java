@@ -375,12 +375,12 @@ public class ChatController {
     }
     
     @DeleteMapping("/{id}/messages/delete")
-    ResponseEntity<?> deleteMessage(@PathVariable("id") Long id, @AuthenticationPrincipal UserDetails userDetails,
+    ResponseEntity<?> deleteMessage(@PathVariable("id") Long chatId, @AuthenticationPrincipal UserDetails userDetails,
                                     @RequestParam(name="id") String[] messageIds) {
         this.messageService.deleteMessages(((User) userDetails).getId(), messageIds);
         // Notify chat users about deleted message
         User user = (User) userDetails;
-        Chat chat = chatService.getChat(id, user.getId());
+        Chat chat = chatService.getChat(chatId, user.getId());
         Message.MessageType messageType = Message.MessageType.DELETE;
         MessageData messageData = MessageData.builder()
                 .type(MessageDataType.ARRAY)
@@ -388,7 +388,7 @@ public class ChatController {
                 .build();
         Message messageDraft = Message.builder()
                 .type(messageType)
-                .chatId(id)
+                .chatId(chatId)
                 .data(messageData)
                 .author(user)
                 .build();
@@ -400,7 +400,7 @@ public class ChatController {
                 .build();
         var response = ResponseEntity.noContent().build();
         if (chat.isPrivate()) {
-            List<User> participants = this.chatService.getParticipants(id);
+            List<User> participants = this.chatService.getParticipants(chatId);
             String destination = Constants.MESSAGE_BROKER_QUEUE_PREFIX + "/chats/messages";
             for (User participant: participants) {
                 // We send message to both participants of given private chat
@@ -413,7 +413,7 @@ public class ChatController {
             return response;
         }
         messagingTemplate.convertAndSend(
-                Constants.MESSAGE_BROKER_TOPIC_PREFIX + "/chats/" + id + "/messages",
+                Constants.MESSAGE_BROKER_TOPIC_PREFIX + "/chats/" + chatId + "/messages",
                 messageDTO
         );
         return response;

@@ -61,3 +61,54 @@ export function FetchMessages(pagingParams: PagingParams) {
 
     return { messages, setMessages, loading: isLoading, hasMore, error };
 }
+
+export function useFetchChats(userId, time, chatId, direction, count) {
+    const [chats, setChats] = useState<Chat[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [hasMore, setHasMore] = useState(true);
+    const [error, setError] = useState<unknown>();
+    const [refreshToken, setRefreshToken] = useState(0);
+
+    // Effect: initial load + refresh
+    useEffect(() => {
+        let cancelled = false;
+        const run = async () => {
+            setIsLoading(true);
+            try {
+                const newChats = await MessengerService.getChatsByUser({
+                    userId, time, chatId, direction, count,
+                }) ?? [];
+                if (cancelled) return;
+                setChats(newChats);           // replace
+                setHasMore(newChats.length > 0);
+            } catch (e) {
+                if (!cancelled) setError(e);
+            } finally {
+                if (!cancelled) setIsLoading(false);
+            }
+        };
+        run();
+        return () => { cancelled = true; };
+    }, [userId, direction, refreshToken]); // cursor params omitted for clarity
+
+    const refresh = useCallback(() => setRefreshToken(t => t + 1), []);
+
+    // Imperative pagination — appends
+    const loadMore = useCallback(async (cursor: { time?: Date | null; chatId?: number | string | null }) => {
+        if (isLoading || !hasMore) return;
+        setIsLoading(true);
+        try {
+            const newChats = await MessengerService.getChatsByUser({
+                userId, direction, ...cursor, count,
+            }) ?? [];
+            setChats(prev => [...prev, ...newChats]);
+            setHasMore(newChats.length > 0);
+        } catch (e) {
+            setError(e);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [userId, direction, count, hasMore, isLoading]);
+
+    return { chats, setChats, loading: isLoading, hasMore, error, refresh, loadMore };
+}

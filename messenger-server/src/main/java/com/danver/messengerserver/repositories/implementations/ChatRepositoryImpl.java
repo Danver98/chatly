@@ -392,7 +392,6 @@ public class ChatRepositoryImpl implements ChatRepository {
 
     @Override
     public void updateLastReadMsgForDeleted(List<Message> messages) {
-        NamedParameterJdbcTemplate namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(Objects.requireNonNull(this.jdbcTemplate.getDataSource()));
         String query = """
                 with data as (
                     select distinct on (uc."userId")
@@ -406,9 +405,9 @@ public class ChatRepositoryImpl implements ChatRepository {
                         on newLastRead."lastChanged" <= msg."lastChanged"
                         and newLastRead."id" != msg."id"
                     where
-                        uc."lastReadMsg"::text = any(:ids)
+                        uc."lastReadMsg" = any(:ids::uuid[])
                         and uc."chatId" = :chatId
-                        and newLastRead.id::text != all(:ids)
+                        and newLastRead.id != all(:ids::uuid[])
                     order by
                         uc."userId",
                         newLastRead."lastChanged" desc
@@ -420,12 +419,12 @@ public class ChatRepositoryImpl implements ChatRepository {
                 from
                     data
                 where
-                    "userId" = data."userId"
+                    "UsersChats"."userId" = data."userId"
             """;
         MapSqlParameterSource params = new MapSqlParameterSource();
         params.addValue("chatId", messages.getFirst().getChatId());
-        params.addValue("ids", messages.stream().map(Message::getId).toArray());
-        jdbcTemplate.update(query, namedParameterJdbcTemplate);
+        params.addValue("ids", messages.stream().map(Message::getId).map(String::valueOf).toArray(String[]::new));
+        this.namedParameterJdbcTemplate.update(query, params);
     }
 
     @Override

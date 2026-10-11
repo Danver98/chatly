@@ -1,5 +1,5 @@
 import { forwardRef, useCallback, useImperativeHandle, useEffect, useRef, useState } from "react";
-import Message, { MessageDataType } from "../../../models/Message";
+import Message, { MESSAGE_DELETED_TEXT, MessageDataType, MessageType } from "../../../models/Message";
 import FilePresentIcon from '@mui/icons-material/FilePresent';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -13,13 +13,19 @@ export interface IMessageListRef {
     messageList: any;
 }
 
+export interface IMessageActions {
+    clickHandler?: (message: Message) => void;
+    replyHandler?: (message: Message) => void;
+    contextMenuHandler?: (event: React.MouseEvent<HTMLLIElement>, message: Message) => void;
+}
+
 const NewMessagesDecorator = () => {
     return (
         <div className="chat-room__newMsgDecorator" data-content="New Messages" />
     )
 }
 
-function ReplyBlock({user, message}: {user: string, message: string}) {
+function ReplyBlock({user, message, clickHandler}: {user?: string | null, message: string, clickHandler?: () => void}) {
   return (
     <Box
       component="blockquote"
@@ -38,11 +44,16 @@ function ReplyBlock({user, message}: {user: string, message: string}) {
         minWidth: 0,
         maxWidth: '100%',
         boxSizing: 'border-box',
+        cursor: 'pointer'
       }}
+      onClick={() => { clickHandler?.()}}
     >
-      <Typography variant="caption" color="text.secondary">
-        {user}
-      </Typography>
+        {
+            user &&
+            <Typography variant="caption" color="text.secondary">
+                {user}
+            </Typography>  
+        }
       <Typography
         variant="body1" 
         sx={{ fontStyle: 'italic',
@@ -95,7 +106,7 @@ const JoinChatLink = ({ chatId, link }: { chatId: ID, link: string }) => {
     )
 }
 
-const MessageBody = ({ message, user }: { message: Message, user?: User | null }) => {
+const MessageBody = ({ message, user, messageActions }: { message: Message, user?: User | null, messageActions?: IMessageActions }) => {
     const alignment = message.author?.id === user?.id ? 'right' : 'left';
     return (
         <div className={`message-list-item_container align-items-${alignment}`}>
@@ -117,8 +128,12 @@ const MessageBody = ({ message, user }: { message: Message, user?: User | null }
                     message.replyTo && message.repliedMessage &&
                     <ReplyBlock
                         user={message.repliedMessage.author?.name + ' ' + message.repliedMessage.author?.surname}
-                        message={message.repliedMessage.data?.data}
+                        message={message.repliedMessage.data?.data} clickHandler={() => { messageActions?.replyHandler?.(message.repliedMessage)}}
                     />
+                }
+                {
+                    !message.replyTo && message.type === MessageType.REPLY &&
+                    <ReplyBlock message={MESSAGE_DELETED_TEXT} />
                 }
                 <p className="message-list-item__messageData">
                     {
@@ -182,14 +197,14 @@ const MessageBody = ({ message, user }: { message: Message, user?: User | null }
     )
 };
 
-const MessageListItem = forwardRef(( { message, user, index, observer, clickHandler, onContextMenu }:
+const MessageListItem = forwardRef(( { message, user, index, observer, clickHandler, messageActions }:
         {
             message: Message,
             user?: User | null,
             index?: number | null,
             observer?: IntersectionObserver | null
             clickHandler?: ((id: any) => void) | null,
-            onContextMenu?: (event: React.MouseEvent<HTMLLIElement>, message: Message) => void
+            messageActions: IMessageActions
         }, ref?: any) => {
     const messageId = message.id === null ? undefined : message.id;
     const itemRef = useRef<HTMLLIElement | null>(null);
@@ -209,6 +224,7 @@ const MessageListItem = forwardRef(( { message, user, index, observer, clickHand
         return () => observer.unobserve(el);
     }, [observer]);
 
+    const contextMenuHandler = messageActions.contextMenuHandler;
     return (
         <li
             id={messageId}
@@ -217,14 +233,14 @@ const MessageListItem = forwardRef(( { message, user, index, observer, clickHand
             className="message-list-item"
             tabIndex={-1}
             ref={setRef}
-            onContextMenu={onContextMenu ? (e) => onContextMenu(e, message) : undefined}
+            onContextMenu={contextMenuHandler ? (e) => contextMenuHandler(e, message) : undefined}
         >
-            <MessageBody message={message} user={user} />
+            <MessageBody message={message} user={user} messageActions={messageActions}/>
         </li>
     );
 });
 
-const MessageList = forwardRef(({ chatId, messages, user, lastReadMsgIdOnOpen, intersectionHandler, listRef, lastReadMsgRef, onContextMenu }:
+const MessageList = forwardRef(({ chatId, messages, user, lastReadMsgIdOnOpen, intersectionHandler, listRef, lastReadMsgRef, messageActions }:
     {
         chatId: ID,
         messages?: Message[],
@@ -233,7 +249,7 @@ const MessageList = forwardRef(({ chatId, messages, user, lastReadMsgIdOnOpen, i
         intersectionHandler: (params?: any) => void,
         listRef?: React.RefObject<HTMLUListElement | null>,
         lastReadMsgRef: React.RefObject<string | null>,
-        onContextMenu?: (event: React.MouseEvent<HTMLLIElement>, message: Message) => void
+        messageActions: IMessageActions
     }, ref?: any) => {
 
     const topMessageId = messages && messages.length ? messages[messages.length - 1].id : null;
@@ -369,7 +385,7 @@ const MessageList = forwardRef(({ chatId, messages, user, lastReadMsgIdOnOpen, i
                 observer={observerReady && index < lastMsgReadIndex ? observerRef.current : null}
                 // Attach the sentinel ref only to the oldest message
                 ref={isSentinel ? sentinelNodeRef : undefined}
-                onContextMenu={onContextMenu}
+                messageActions={messageActions}
             />
         );
         if (!newMsgDecoratorInserted && firstUnreadMsgId === message.id) {

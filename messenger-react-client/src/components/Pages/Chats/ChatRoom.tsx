@@ -1,5 +1,5 @@
-import { useCallback, useState, useEffect, useEffectEvent, useRef } from "react";
-import MessageList from "./MessagesList";
+import { useCallback, useState, useEffect, useRef, useMemo } from "react";
+import MessageList, { IMessageActions } from "./MessagesList";
 import { CHATS_COMPONENT_MSG_UNREAD_COUNT_QUEUE, DIRECTION,
     CHATS_COMPONENT_MESSAGE_QUEUE } from "../../../util/Constants";
 import Chat from "../../../models/Chat";
@@ -22,6 +22,7 @@ import MessageSender from "./MessageSender";
 
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import MessageMenu, { MENU_ACTIONS, MenuAction } from "./MessageMenu";
+import ConfirmationDialog, { IConfirmDialogOptions } from "../../Common/ConfirmationDialog";
 
 export interface MessageListHandle {
     getSentinelNode: () => HTMLLIElement | null;
@@ -68,7 +69,10 @@ export interface PagingParams {
     messageId?: number | string | null;
     direction?: number | null;
     count?: number | null;
+    // Whether to extend current message list with fetched ones
     include?: boolean | null;
+    // Whether you use messageId as cursor and fetch equal messages count in both directions
+    cursor?: boolean | null;
 }
 
 export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: () => void }) {
@@ -94,12 +98,11 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
     const [unreadMsgCount, setUnreadMsgCount] = useState<number>(chat.unreadMsgCount || 0);
 
     const [editMenuOpen, setEditMenuOpen] = useState(false);
-
-    const [contextMenuAnchorElement, setContextMenuAnchorElement] = useState<null | HTMLElement>(null);
     const [contextMenuMessage, setContextMenuMessage] = useState<Message | null>(null);
     const [contextMenuAnchorPosition, setContextMenuAnchorPosition] = useState<object|null>(null);
 
     const [replyMessage, setReplyMessage] = useState<Message | null>(null);
+    const [deleteMessageDialogOptions, setDeleteMessageDialogOptions] = useState<IConfirmDialogOptions>({});
 
     const fetchMessages = async (params: PagingParams) => {
         const dto = {
@@ -112,6 +115,12 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
         };
         return await MessengerService.getMessages(dto);
     }
+
+    // This is done to use fresh messages value in memoized handlers to avoid listing it in dependencies
+    const messagesRef = useRef(messages);
+    useEffect(() => {
+        messagesRef.current = messages;
+    });
 
     /**
      * Setting permissions for authenticated user for given chat.
@@ -126,7 +135,43 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
     }, [chat.id]);
 
     const onMessageReceived = useCallback((dto: any) => {
-        const data = dto.message;
+        const data: Message = dto.message;
+        if (data.type === MessageType.DELETE) {
+            // Currently we process message list update after self-initiated user deletion
+            // in special handler
+            if (data.author?.id === currentUser?.id) return
+            const currentMessages = messagesRef.current;
+            const rawPayload = data.data?.data;
+            if (rawPayload == null) return;
+            const deleteIds: ID[] = Array.isArray(rawPayload) ? rawPayload : [rawPayload];
+            const messagesToDelete = currentMessages.map((message, index) => ({message, index})).filter(item => deleteIds.includes(item.message.id));
+            if (messagesToDelete.length > 0) {
+                if (deleteIds.includes(lastReadMsgRef.current)) {
+                    // Last read msg was just deleted - need to find new last read msg
+                    const lastReadMsgIndex = currentMessages.findIndex((message) => message.id == lastReadMsgRef.current);
+                    if (lastReadMsgIndex !== -1) {
+                        const newLastReadMsgIndex = currentMessages.findIndex((message, index) => index > lastReadMsgIndex && !deleteIds.includes(message.id));
+                        if (newLastReadMsgIndex !== -1) {
+                            lastReadMsgRef.current = currentMessages[newLastReadMsgIndex].id;
+                        }
+                    }
+                }
+                setMessages((prevMessages) =>
+                    prevMessages
+                        .filter(message => !deleteIds.includes(message.id))
+                        .map(message => message.replyTo && deleteIds.includes(message.replyTo) ? message.withoutReply() : message)
+                );
+                const lastReadMsgIndex = currentMessages.findIndex(m => m.id === lastReadMsgRef.current);
+                if (lastReadMsgIndex !== -1) {
+                    const deletedUnreadCount = messagesToDelete.filter(m => m.index < lastReadMsgIndex).length;
+                    setUnreadMsgCount(count => count - deletedUnreadCount);
+                }
+                // There is a case when messages being unread but not present in the list are deleted
+                // so unread conter which (as supposed) counts ALL unread messages (even ones that hasn't been fetched yet) should be decremented
+                // via some fetch to backend
+            }
+            return;
+        }
         const isLastMessageVisible = messageListRef.current?.scrollTop === 0;
         const message = new Message(data.id, data.chatId, data.receiverId, data.type, data.data,
             data.author, data.time, isLastMessageVisible, data.replyTo, data.repliedMessage);
@@ -141,7 +186,7 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
             // increment unreadMsgCount
             setUnreadMsgCount(count => count + 1);
         }
-    }, []);
+    }, [currentUser?.id]);
 
     /** Scroll down to the top of messages list, when current user sends a new message */
     useEffect(() => {
@@ -155,15 +200,16 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
      * It's supposed handler is only fired on unread messages not to move pointer
      * to earlier read messages
      */
-    const handleMsgIntersection = useEffectEvent((params?: any) => {
-        const lastReadMsgIndex = messages.findIndex(m => m.id === lastReadMsgRef.current);
-        const msgIndex = params.position ?? messages.findIndex(m => m.id === params.id);
+    const handleMsgIntersection = useCallback((params?: any) => {
+        const currentMessages = messagesRef.current;
+        const lastReadMsgIndex = currentMessages.findIndex(m => m.id === lastReadMsgRef.current);
+        const msgIndex = params.position ?? currentMessages.findIndex(m => m.id === params.id);
         if (msgIndex === -1) return;
         if (lastReadMsgIndex === -1) {
             // User has opened chat for the first time and there are brand new messages or
             // current message portion doesn't include any unread messages
             lastReadMsgRef.current = params.id;
-            const decrement = messages.length - msgIndex;
+            const decrement = currentMessages.length - msgIndex;
             setMessages((prevMessages) => prevMessages.map((message, index) => message.id === params.id || index > msgIndex ?
                     new Message(message.id, message.chatId, message.receiverId, message.type, message.data,
                         message.author, message.time, true, message.replyTo, message.repliedMessage)
@@ -179,11 +225,11 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
                     message.author, message.time, true, message.replyTo, message.repliedMessage) 
                 : message));
         const decrement = lastReadMsgIndex - msgIndex;
-        if (messages[msgIndex].author?.id !== currentUser?.id) {
+        if (currentMessages[msgIndex].author?.id !== currentUser?.id) {
             // If current user is not the author of the message, decrement unreadMsgCount
             setUnreadMsgCount((prevCount) => prevCount === 0 ? prevCount : Math.max(0, prevCount - decrement));
         };
-    });
+    }, [currentUser?.id]);
 
     const sendMessage = async (event: any) => {
         const user = currentUser as User;
@@ -243,6 +289,9 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
         );
         message.read = true;
         message.replyTo = replyMessage?.id;
+        if (message.replyTo) {
+            message.type = MessageType.REPLY;
+        }
         message.repliedMessage = replyMessage;
 
         const params: IPublishParams = {
@@ -397,7 +446,6 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
 
     const onContextMenu = useCallback((event: React.MouseEvent<HTMLLIElement>, message: Message) => {
         event.preventDefault();
-        setContextMenuAnchorElement(event.currentTarget as HTMLElement);
         setContextMenuMessage(message);
         setContextMenuAnchorPosition({
             top: event.clientY,
@@ -405,8 +453,43 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
         })
     }, []);
 
+    const deleteMessage = useCallback(async (deleted: Message) => {
+        if (!chat.id || !deleted || !deleted.id) return;
+        await MessengerService.deleteMessages(chat.id, [deleted.id]);
+        const currentMessages = messagesRef.current;
+        const deletedIndex = currentMessages.findIndex(m => m.id == deleted.id);
+        if (deletedIndex === -1) return;
+
+        if (lastReadMsgRef.current == deleted.id && deletedIndex < currentMessages.length) {
+            // Last read msg was just deleted - need to find new last read msg
+            lastReadMsgRef.current = currentMessages[deletedIndex + 1].id;
+        }
+        setMessages((prevMessages) =>
+            prevMessages
+                .filter(message => message.id !== deleted.id)
+                .map(message => message.replyTo === deleted.id
+                    ? message.withoutReply()
+                    : message)
+        );
+    }, [chat.id]);
+
+    const onDeleteMessage = useCallback((message: Message) => {
+        const dialogOptions: IConfirmDialogOptions = {
+            open: true,
+            title: 'Delete message',
+            message: 'Are you sure you want to delete this message?',
+            confirmText: 'Delete',
+            closeText: 'Cancel',
+            onClose: () => { setDeleteMessageDialogOptions({open: false});},
+            onConfirm: () => {
+                setDeleteMessageDialogOptions({open: false});
+                deleteMessage(message);
+            },
+        };
+        setDeleteMessageDialogOptions(dialogOptions);
+    }, [deleteMessage]);
+
     const handleClose = useCallback(() => {
-        setContextMenuAnchorElement(null);
         setContextMenuAnchorPosition(null);
         setContextMenuMessage(null);
     }, []);
@@ -415,7 +498,7 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
         handleClose();
         switch (action) {
             case MENU_ACTIONS.DELETE:
-                console.log('DELETE');
+                onDeleteMessage(message);
                 break;
             case MENU_ACTIONS.REPLY:
                 setReplyMessage(message);
@@ -423,7 +506,32 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
             default:
                 break;
         }
-    }, [handleClose]);
+    }, [handleClose, onDeleteMessage]);
+
+
+    const onReplyMessage = useCallback((message: Message) => {
+        if (!message.id) return;
+        if (!messagesRef.current.map((m) => m.id).includes(message.id)) {
+            // TODO:Fetch data
+            return;
+            setPagingParams({
+                chatId: chat.id,
+                userId: currentUser?.id,
+                messageId: message.id,
+                count: 100,
+                cursor: true,
+                direction: DIRECTION.PAST
+            });
+            return;
+        };
+        const element = document.getElementById(message.id);
+        element?.scrollIntoView({ behavior: 'smooth', block: "center" });
+    }, [chat.id, currentUser?.id]);
+
+    const messageActions: IMessageActions = useMemo(() => ({
+        replyHandler: onReplyMessage,
+        contextMenuHandler: onContextMenu
+    }), [onContextMenu, onReplyMessage]);
 
     return (
         <div className="chat-room-page">
@@ -456,15 +564,11 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
                     ref={messageListHandleRef}
                     listRef={messageListRef}
                     lastReadMsgRef={lastReadMsgRef}
-                    onContextMenu={onContextMenu}
+                    messageActions={messageActions}
                 />
                 {
                     isLoading && <CircularProgress />
                 }
-                <MessageMenu user={currentUser} chat={chat} message={contextMenuMessage}
-                    anchorPosition={contextMenuAnchorPosition} onAction={onContextMenuActionSelected}
-                    handleClose={handleClose}
-                />
                 {
                     unreadMsgCount > 0 &&
                     <Circle value={unreadMsgCount} clickHandler={scrollToLatestMessage}/>
@@ -483,6 +587,12 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
                         fontSize="large"
                         />
                 </IconButton>
+                {/*Additional Dialogs and menus*/}
+                <MessageMenu user={currentUser} chat={chat} message={contextMenuMessage}
+                    anchorPosition={contextMenuAnchorPosition} onAction={onContextMenuActionSelected}
+                    handleClose={handleClose}
+                />
+                <ConfirmationDialog options={deleteMessageDialogOptions} />
             </div>
         </div>
     )

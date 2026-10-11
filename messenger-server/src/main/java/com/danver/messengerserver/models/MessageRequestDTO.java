@@ -23,6 +23,8 @@ public class MessageRequestDTO {
     private String messageId;
     private Direction direction;
     private Integer count;
+    // Whether you use messageId as cursor and fetch equal messages count in both directions
+    private Boolean cursor;
 
     // For better times
 /*    private final Map<String, Object> requestData = new HashMap<>(); // Make it Concurrent?

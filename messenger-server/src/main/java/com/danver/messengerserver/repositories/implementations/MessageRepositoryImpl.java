@@ -23,7 +23,7 @@ import java.util.*;
 public class MessageRepositoryImpl implements MessageRepository {
 
     private record MessageRequestDtoProperTime(
-            Long chatId, Long userId, OffsetDateTime time, String messageId, Direction direction, Integer count) {
+            Long chatId, Long userId, OffsetDateTime time, String messageId, Direction direction, Integer count, Boolean cursor) {
 
     }
 
@@ -48,11 +48,121 @@ public class MessageRepositoryImpl implements MessageRepository {
         logger.info("Getting messages for user with id:  for chat with id {} using paging", dto.getChatId());
         MessageRequestDtoProperTime dtoProper = new MessageRequestDtoProperTime(
                 dto.getChatId(), dto.getUserId(), dto.getTime() == null ? null : dto.getTime().atOffset(ZoneOffset.UTC),
-                dto.getMessageId(), dto.getDirection(), dto.getCount());
+                dto.getMessageId(), dto.getDirection(), dto.getCount(), dto.getCursor());
         char compareSign = dto.getDirection() == Direction.FUTURE ? '>' : '<';
         String order = dto.getDirection() == Direction.FUTURE ? "ASC" : "DESC";
         NamedParameterJdbcTemplate namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(Objects.requireNonNull(this.jdbcTemplate.getDataSource()));
-        String query = String.format("""
+        String query;
+        if (Boolean.TRUE.equals(dto.getCursor())&& dto.getMessageId() != null) {
+            // Fetching equal number of messages in both direction from pivot message - cursor
+            query = String.format("""
+                with message as (
+                    SELECT
+                        m.id, m."authorId",
+                        u.name, u.surname, u."avatarUrl",
+                        m."chatId", m.type, m.value, m.value_type, m."lastChanged",
+                        true::boolean "read",
+                        m."replyTo",
+                        reply.type AS "replyType",
+                        reply.value AS "replyValue",
+                        reply.value_type AS "replyValueType",
+                        replyUser.name AS "replyAuthorName",
+                        replyUser.surname AS "replyAuthorSurname"
+                    FROM
+                        "Messages" m
+                    INNER JOIN "Users" u
+                        ON m."authorId" = u.id
+                    LEFT JOIN "Messages" reply
+                        ON m."replyTo" IS NOT DISTINCT FROM reply.id
+                    LEFT JOIN "Users" replyUser
+                        ON reply."authorId" = replyUser.id
+                    WHERE
+                        m."chatId" = :chatId
+                        AND m.id = :messageId::uuid
+                ),
+                before_msgs as (
+                    SELECT
+                        m.id, m."authorId",
+                        u.name, u.surname, u."avatarUrl",
+                        m."chatId", m.type, m.value, m.value_type, m."lastChanged",
+                        true::boolean "read",
+                        m."replyTo",
+                        reply.type AS "replyType",
+                        reply.value AS "replyValue",
+                        reply.value_type AS "replyValueType",
+                        replyUser.name AS "replyAuthorName",
+                        replyUser.surname AS "replyAuthorSurname"
+                    FROM
+                        "Messages" m
+                    INNER JOIN "Users" u
+                        ON m."authorId" = u.id
+                    LEFT JOIN "Messages" reply
+                        ON m."replyTo" IS NOT DISTINCT FROM reply.id
+                    LEFT JOIN "Users" replyUser
+                        ON reply."authorId" = replyUser.id
+                    WHERE
+                        m."chatId" = :chatId
+                        AND m.id <> :messageId::uuid
+                        AND m."lastChanged" <= (
+                            SELECT msg."lastChanged"
+                            FROM "Messages" msg
+                            WHERE msg.id = :messageId::uuid
+                        )
+                    ORDER BY
+                        m."lastChanged" DESC
+                    FETCH FIRST :count ROWS ONLY
+                ),
+                after_msgs as (
+                    SELECT
+                        m.id, m."authorId",
+                        u.name, u.surname, u."avatarUrl",
+                        m."chatId", m.type, m.value, m.value_type, m."lastChanged",
+                        true::boolean "read",
+                        m."replyTo",
+                        reply.type AS "replyType",
+                        reply.value AS "replyValue",
+                        reply.value_type AS "replyValueType",
+                        replyUser.name AS "replyAuthorName",
+                        replyUser.surname AS "replyAuthorSurname"
+                    FROM
+                        "Messages" m
+                    INNER JOIN "Users" u
+                        ON m."authorId" = u.id
+                    LEFT JOIN "Messages" reply
+                        ON m."replyTo" IS NOT DISTINCT FROM reply.id
+                    LEFT JOIN "Users" replyUser
+                        ON reply."authorId" = replyUser.id
+                    WHERE
+                        m."chatId" = :chatId
+                        AND m.id <> :messageId::uuid
+                        AND m."lastChanged" > (
+                            SELECT msg."lastChanged"
+                            FROM "Messages" msg
+                            WHERE msg.id = :messageId::uuid
+                        )
+                    ORDER BY
+                        m."lastChanged" ASC
+                    FETCH FIRST :count ROWS ONLY
+                )
+                SELECT
+                    *
+                FROM
+                    before_msgs
+                UNION ALL
+                SELECT
+                    *
+                FROM
+                    message
+                UNION ALL
+                SELECT
+                    *
+                FROM
+                    after_msgs
+                ORDER BY
+                    "lastChanged" %s
+                """, order);
+        } else {
+            query = String.format("""
                 SELECT
                     "Messages".id,
                     "Messages"."authorId",
@@ -97,6 +207,7 @@ public class MessageRepositoryImpl implements MessageRepository {
                     "Messages"."lastChanged" %s
                 FETCH FIRST :count ROWS ONLY
                 """, compareSign, compareSign, order);
+        }
 
         return namedParameterJdbcTemplate.query(query, new BeanPropertySqlParameterSource(dtoProper), new MessageRowMapper());
     }
@@ -110,7 +221,7 @@ public class MessageRepositoryImpl implements MessageRepository {
         String query = String.format("""
                 select
                     "Messages".id,
-                    "Messages""authorId",
+                    "Messages"."authorId",
                     "Users"."name",
                     "Users".surname,
                     "Users"."avatarUrl",
@@ -178,7 +289,7 @@ public class MessageRepositoryImpl implements MessageRepository {
         logger.info("Getting messages for user with id: {} for chat with id {} using paging", dto.getUserId(), dto.getChatId());
         MessageRequestDtoProperTime dtoProper = new MessageRequestDtoProperTime(
                 dto.getChatId(), dto.getUserId(), dto.getTime() == null ? null : dto.getTime().atOffset(ZoneOffset.UTC),
-                dto.getMessageId(), dto.getDirection(), dto.getCount());
+                dto.getMessageId(), dto.getDirection(), dto.getCount(), dto.getCursor());
         NamedParameterJdbcTemplate namedParameterJdbcTemplate = new NamedParameterJdbcTemplate(Objects.requireNonNull(this.jdbcTemplate.getDataSource()));
         String query = """
                 with last_read_msg as (
@@ -341,8 +452,10 @@ public class MessageRepositoryImpl implements MessageRepository {
                 delete from
                     "Messages"
                 where
-                    "id" = any(?);
+                    "id" = any(:ids::uuid[]);
                 """;
-        jdbcTemplate.update(query, messages.stream().map(Message::getId).toArray());
+        MapSqlParameterSource params = new MapSqlParameterSource();
+        params.addValue("ids", messages.stream().map(Message::getId).map(String::valueOf).toArray(String[]::new));
+        this.namedParameterJdbcTemplate.update(query, params);
     }
 }

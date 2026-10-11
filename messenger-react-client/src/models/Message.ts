@@ -8,7 +8,8 @@ export enum MessageDataType {
     VIDEO,
     FILE,
     AUDIO,
-    JOIN_LINK
+    JOIN_LINK,
+    ARRAY
 }
 
 export interface MessageData {
@@ -22,9 +23,12 @@ export enum MessageType {
     CHAT,
     JOIN,
     LEAVE,
-    EXCLUDE
+    EXCLUDE,
+    REPLY,
+    DELETE
 }
 
+export const MESSAGE_DELETED_TEXT = '[Message deleted]';
 
 interface Message {
     id: string | null;
@@ -90,6 +94,21 @@ class Message implements Message {
             this.read,
             this.replyTo,
             repliedMessage
+        );
+    }
+
+    withoutReply(): Message {
+        return new Message(
+            this.id,
+            this.chatId,
+            this.receiverId,
+            this.type,
+            this.data,
+            this.author,
+            this.getTime(),
+            this.read,
+            null,
+            null,
         );
     }
 

@@ -232,5 +232,12 @@ class MessengerService {
         const headers: HeadersInit = this.getRequestResourceObjectHeader(chatId);
         return HttpService.postByUrl(link, undefined, headers);
     }
+
+    async deleteMessages(chatId: ID, messageIds: ID[]): Promise<any> {
+        if (messageIds.length === 0) return;
+        const headers: HeadersInit = this.getRequestResourceObjectHeader(chatId);
+        const toDelete = 'id=' + messageIds.join('&id=');
+        return HttpService.delete(MessengerService.CHAT_URL + `/${chatId}/messages/delete?${toDelete}`, undefined, headers);
+    }
 }
 export default MessengerService.Instance;
