@@ -12,6 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.env.Environment;
 import org.springframework.http.*;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Objects;
@@ -124,6 +126,13 @@ public class AuthController {
         headers.setPragma("no-cache");
         headers.setExpires(0);
         return new ResponseEntity<>(authData, headers, HttpStatus.OK);
+    }
+
+    @PostMapping("/network-status/{status}")
+    public ResponseEntity<?> updateNetworkStatus(@AuthenticationPrincipal UserDetails userDetails,
+                                                 @RequestHeader(X_USER_DEVICE_ID) String deviceId, @PathVariable short status) {
+        this.authService.updateNetworkStatus((User)userDetails, deviceId, status);
+        return ResponseEntity.noContent().build();
     }
 
     private String buildRefreshTokenCookiePath(HttpServletRequest request) {

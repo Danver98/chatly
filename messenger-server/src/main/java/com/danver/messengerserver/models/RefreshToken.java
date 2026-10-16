@@ -6,6 +6,7 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.relational.core.mapping.Column;
 import org.springframework.data.relational.core.mapping.Table;
 
+import java.time.Instant;
 import java.util.Objects;
 
 @Table("RefreshTokens")
@@ -32,6 +33,16 @@ public class RefreshToken {
     @Column("token")
     private String token;
 
+    @Setter
+    @Getter
+    @Column("networkStatus")
+    private Short networkStatus;
+
+    @Setter
+    @Getter
+    @Column("statusUpdateTime")
+    private Instant statusUpdateTime;
+
     // Constructors
     public RefreshToken() {}
 
@@ -50,12 +61,14 @@ public class RefreshToken {
         return Objects.equals(id, that.id) &&
                 Objects.equals(userId, that.userId) &&
                 Objects.equals(token, that.token) &&
-                Objects.equals(deviceId, that.deviceId);
+                Objects.equals(deviceId, that.deviceId) &&
+                Objects.equals(networkStatus, that.networkStatus) &&
+                Objects.equals(statusUpdateTime, that.statusUpdateTime);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, userId, token, deviceId);
+        return Objects.hash(id, userId, token, deviceId, networkStatus, statusUpdateTime);
     }
 
     @Override
@@ -63,8 +76,10 @@ public class RefreshToken {
         return "RefreshToken{" +
                 "id=" + id +
                 ", userId=" + userId +
-                ", token='" + token + '\'' +
                 ", device='" + deviceId + '\'' +
+                ", token='" + token + '\'' +
+                ", networkStatus=" + networkStatus +
+                ", statusUpdateTime=" + statusUpdateTime +
                 '}';
     }
 }

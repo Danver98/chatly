@@ -48,3 +48,8 @@ export class SecuredPages {
     static readonly PROFILE_PAGE = SecuredPages.ROOT + '/profile';
     static readonly SETTINGS = SecuredPages.ROOT + '/settings';
 };
+
+export const NetworkStatus = {
+    OFFLINE: 0,
+    ONLINE: 1
+}

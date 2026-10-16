@@ -113,12 +113,13 @@ CREATE TABLE IF NOT EXISTS "RefreshTokens"
     "id" bigserial PRIMARY KEY,
     "user" bigint NOT NULL REFERENCES "Users" (id) ON DELETE CASCADE ON UPDATE CASCADE,
     "device" text,
-    "token" text not null
+    "token" text not null,
+    "networkStatus" smallint,
+    "statusUpdateTime" timestamp with time zone
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_user_device
     ON "RefreshTokens" ("user", "device")
     NULLS NOT DISTINCT;
-
 
 
 

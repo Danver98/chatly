@@ -51,6 +51,10 @@ export class AuthService {
     async getAccessToken(): Promise<any> {
         return HttpService.get(AuthService.URL + `/accessToken`);
     }
+
+    async updateNetworkStatus(status: number): Promise<any> {
+        return HttpService.post(AuthService.URL + `/network-status/${status}`);
+    }
 }
 
 export default AuthService.Instance;

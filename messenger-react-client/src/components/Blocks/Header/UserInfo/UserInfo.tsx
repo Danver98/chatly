@@ -1,6 +1,6 @@
 import './UserInfo.css';
 import { useNavigate } from "react-router-dom";
-import { Pages, SecuredPages } from "../../../../util/Constants";
+import { SecuredPages } from "../../../../util/Constants";
 import AuthService from "../../../../services/AuthService";
 import { Box, Button, List, ListItem, ListItemButton, ListItemText, } from "@mui/material";
 import User from '../../../../models/User';

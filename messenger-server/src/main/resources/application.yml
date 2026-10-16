@@ -8,6 +8,9 @@ application:
     permissions:
         # Whether app should validate user access to resources and completing actions with them
         enabled: true
+    user:
+        network-status-check-period: 30000
+        log-out-inactive-period: 25000
 
 logging:
     level:
@@ -59,6 +62,11 @@ server:
 
 # Spring
 spring:
+    task:
+        scheduling:
+            pool:
+                # By default, Spring runs @scheduled tasks in one thread
+                size: 5
     devtools:
         restart:
             # This is a hack for casting UserDetails to CustomUserDetails class to prevent ClassCastException.

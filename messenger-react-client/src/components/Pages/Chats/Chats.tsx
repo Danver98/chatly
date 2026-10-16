@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useRef } from "react";
-import { FetchChats } from "./FetchData";
+import { useFetchChats } from "./FetchData";
 import "./Chats.css"
 import ChatsList from "./ChatsList";
 import { CHATS_COMPONENT_MESSAGE_QUEUE, CHATS_COMPONENT_MSG_UNREAD_COUNT_QUEUE, DIRECTION } from "../../../util/Constants";
@@ -12,6 +12,7 @@ import Message, { MessageType } from "../../../models/Message";
 import MessengerService from "../../../services/MessengerService";
 import ChatCreation from "../../Lists/UserList";
 import { useAuthStore } from "../../../stores/authStore";
+import { ID } from "../../../util/Types";
 
 export interface ChatCreationParams {
     chatName: string | null;
@@ -57,32 +58,48 @@ const SearchBar = ({ onChange }: { onChange: (value: string) => any }) => {
 
 
 export default function Chats() {
-    const [{ time, chatId }, setThreshold] = useState<{ time?: Date | null, chatId: number | string | null }>({ time: null, chatId: null });
     const [lastElementRef, setLastElementRef] = useState(null);
-    const observerRef = useRef<IntersectionObserver | null>(null);
-    const [counter, setCounter] = useState(0);
     const currentUser = useAuthStore(state => state.currentLoggedUser);
     const userId = currentUser?.id;
     const [activeChat, setActiveChat] = useState<Chat | null>(null);
     // TODO: direction
 
-    const {
-        chats,
-        setChats,
-        loading,
-        hasMore,
-        error
-    } = FetchChats(userId ? userId : 0, time, chatId, DIRECTION.PAST);
+    const { chats, setChats, loading, hasMore, error, refresh, loadMore } =
+        useFetchChats(userId ?? 0, DIRECTION.PAST, 50);
 
     const activeChatIdRef = useRef<number | string | null>(activeChat?.id);
     useEffect(() => {
         activeChatIdRef.current = activeChat?.id;
     });
 
+    const chatsRef = useRef(chats);
+    useEffect(() => {
+        chatsRef.current = chats;
+    });
+
+    const loadMoreRef = useRef(loadMore);
+    useEffect(() => {
+        loadMoreRef.current = loadMore;
+    });
+
     // New message's been sent
     const onMessageReceived = useCallback(async (dto: any) => {
-        const msg = dto.message;
-        const chat = dto.chat;
+        const msg: Message = dto.message;
+        const chat: Chat = dto.chat;
+        // Case 0: deleting last sent message for a chat
+        // We need to update chats list by simple refreshing
+        if (msg.type === MessageType.DELETE && msg.chatId === chat.id) {
+            const rawPayload = msg.data?.data;
+            if (rawPayload == null) return;
+            const deleteIds: ID[] = Array.isArray(rawPayload) ? rawPayload : [rawPayload];
+            if (deleteIds.length === 0) return;
+
+            const chatToUpdate = chatsRef.current.find(c => c.id === chat.id);
+            if (!chatToUpdate) return;
+            if (!deleteIds.includes(chatToUpdate.lastMessage?.id)) return;
+            refresh();
+            return;
+        }
         const message = new Message(
             msg.id, msg.chatId, msg.receiverId,
             msg.type, msg.data, msg.author, msg.time
@@ -155,7 +172,7 @@ export default function Chats() {
 
             return [updatedChat, ...filteredChats];
         });
-    }, [userId]);
+    }, [userId, refresh]);
 
     // New message's been sent
     useListener(CHATS_COMPONENT_MESSAGE_QUEUE, onMessageReceived);
@@ -188,37 +205,28 @@ export default function Chats() {
     useListener(CHATS_COMPONENT_MSG_UNREAD_COUNT_QUEUE, handleUnreadCount);
 
     useEffect(() => {
-        observerRef.current = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting) {
-                    setCounter(prev => prev + 1);
-                }
+        if (!lastElementRef) return;
+
+        const observer = new IntersectionObserver((entries) => {
+            if (entries[0].isIntersecting) {
+                loadMoreRef.current();
             }
-        );
-    }, []); // Runs on start only
+        });
 
-    useEffect(() => {
-        const observerCurrent = observerRef.current;
-
-        if (lastElementRef) {
-            observerCurrent?.observe(lastElementRef);
-        }
-
-        return () => {
-            if (lastElementRef) {
-                observerCurrent?.disconnect();
-            }
-        };
+        observer.observe(lastElementRef);
+        return () => observer.disconnect();
     }, [lastElementRef]);
 
-    const handleClick = async (chat: Chat) => {
-        // make a fetch
-        const fetchedChat = await MessengerService.getChat(chat.id, userId);
-        // This is a chat with participants
-        setActiveChat(fetchedChat);
-    }
+    const activeChatRequestIdRef = useRef(0);
 
-    const handleChatCreation = async (users: any[], params?: ChatCreationParams | null) => {
+    const handleClick = useCallback(async (chat: Chat) => {
+        const requestId = ++activeChatRequestIdRef.current;
+        const fetchedChat = await MessengerService.getChat(chat.id, userId);
+        if (requestId !== activeChatRequestIdRef.current) return;
+        setActiveChat(fetchedChat);
+    }, [userId]);
+
+    const handleChatCreation = useCallback(async (users: any[], params?: ChatCreationParams | null) => {
         // Create private chat if doesn't exist or redirect to it
         const newChat = new Chat(
             null,
@@ -232,7 +240,7 @@ export default function Chats() {
         );
         const fetchedChat = await MessengerService.createChat(newChat);
         setActiveChat(fetchedChat);
-    }
+    }, [currentUser?.id]);
 
     return (
         <>

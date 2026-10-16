@@ -9,10 +9,12 @@ import com.danver.messengerserver.models.User;
 import com.danver.messengerserver.repositories.interfaces.RefreshTokenRepository;
 import com.danver.messengerserver.services.interfaces.UserService;
 import com.danver.messengerserver.utils.Constants;
+import com.danver.messengerserver.utils.NetworkStatus;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.env.Environment;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -21,6 +23,7 @@ import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.http.HttpHeaders;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -29,6 +32,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 
 import static com.danver.messengerserver.utils.Constants.ACCESS_TOKEN_BLACKLIST_KEY;
@@ -39,6 +43,7 @@ public class AuthService {
 
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
+    private final Environment env;
 
     private final UserService userService;
     private final RefreshTokenRepository tokenRepository;
@@ -48,9 +53,10 @@ public class AuthService {
     private static final int ACCESS_TOKEN_BLACKLIST_BATCH_SIZE = 1000;
 
     @Autowired
-    public AuthService(JwtUtil jwtUtil, AuthenticationManager authenticationManager, UserService userService, RefreshTokenRepository tokenRepository, RedisTemplate<String, String> redisTemplate) {
+    public AuthService(JwtUtil jwtUtil, AuthenticationManager authenticationManager, Environment env, UserService userService, RefreshTokenRepository tokenRepository, RedisTemplate<String, String> redisTemplate) {
         this.jwtUtil = jwtUtil;
         this.authenticationManager = authenticationManager;
+        this.env = env;
         this.userService = userService;
         this.tokenRepository = tokenRepository;
         this.redisTemplate = redisTemplate;
@@ -68,12 +74,13 @@ public class AuthService {
                     (new UsernamePasswordAuthenticationToken(authDTO.getLogin(), authDTO.getPassword()));
         } else {
             log.warn("user %d is already logged".formatted(user.getId()));
-            // Remove already present refreshToken
-            tokenRepository.deleteByUserIdAndDevice(user.getId(), authDTO.getDeviceId());
         }
         String accessToken = jwtUtil.generateAccessToken(user);
         String refreshToken = jwtUtil.generateRefreshToken(user);
-        tokenRepository.save(new RefreshToken(user.getId(), refreshToken, authDTO.getDeviceId()));
+        int updated = tokenRepository.rotateToken(user.getId(), authDTO.getDeviceId(), refreshToken);
+        if (updated == 0) {
+            tokenRepository.save(new RefreshToken(user.getId(), refreshToken, authDTO.getDeviceId()));
+        }
         return AuthData.builder()
                 .user(user)
                 .accessToken(accessToken)
@@ -116,16 +123,23 @@ public class AuthService {
             throw new AppAuthenticationException("Wrong refresh token provided for user %d".formatted(userId));
         }
         User user = (User) userService.loadUserByUsername((String) claims.get(Constants.USER_JWT_LOGIN_KEY));
-        // Delete old token from db
-        tokenRepository.deleteByUserIdAndDevice(user.getId(), deviceId);
         String accessToken = jwtUtil.generateAccessToken(user);
         String newRefreshToken = jwtUtil.generateRefreshToken(user);
-        tokenRepository.save(new RefreshToken(userId, newRefreshToken, deviceId));
+        // Update old token value with a new one
+        int updated = tokenRepository.rotateToken(userId, deviceId, newRefreshToken);
+        if (updated == 0) {
+            tokenRepository.save(new RefreshToken(userId, newRefreshToken, deviceId));
+        }
         return AuthData.builder()
                 .user(user)
                 .accessToken(accessToken)
                 .refreshToken(newRefreshToken)
                 .build();
+    }
+
+    public Object updateNetworkStatus(User user, String deviceId, short status) {
+        Instant statusUpdateTime = Instant.now();
+        return this.tokenRepository.updateNetworkStatus(user.getId(), deviceId, status, statusUpdateTime);
     }
 
     @Scheduled(fixedDelay = 3_600_000, initialDelay = 0) // hourly
@@ -210,6 +224,14 @@ public class AuthService {
         log.info("Completed deletion. Processed: {}, Deleted: {}", totalProcessed, totalDeleted);
     }
 
+    @Async
+    @Scheduled(fixedRateString ="${application.user.network-status-check-period:25000}" )
+    public void logoutInactiveUsers() {
+        log.info("Starting \"Logout inactive users\" task");
+        Long threshold = Long.parseLong(Objects.requireNonNull(this.env.getProperty("application.user.log-out-inactive-period"))) / 1000;
+        tokenRepository.setOfflineStatusForInactiveUsers((short) NetworkStatus.OFFLINE.ordinal(), threshold);
+        log.info("Finished \"Logout inactive users\" task");
+    }
     /**
      * Batch delete tokens by IDs
      */
