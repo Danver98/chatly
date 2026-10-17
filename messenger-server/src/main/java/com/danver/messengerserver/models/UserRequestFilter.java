@@ -1,5 +1,6 @@
 package com.danver.messengerserver.models;
 
+import com.danver.messengerserver.utils.NetworkStatus;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -36,4 +37,9 @@ public class UserRequestFilter {
      * Array of user identifiers
      */
     private long [] ids;
+
+    /**
+     * Network status of the users (online/offline)
+     */
+    private NetworkStatus status;
 }

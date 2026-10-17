@@ -229,7 +229,8 @@ public class AuthService {
     public void logoutInactiveUsers() {
         log.info("Starting \"Logout inactive users\" task");
         Long threshold = Long.parseLong(Objects.requireNonNull(this.env.getProperty("application.user.log-out-inactive-period"))) / 1000;
-        tokenRepository.setOfflineStatusForInactiveUsers((short) NetworkStatus.OFFLINE.ordinal(), threshold);
+        tokenRepository.setOfflineStatusForInactiveUsers((short) NetworkStatus.OFFLINE.ordinal(),
+                (short)NetworkStatus.ONLINE.ordinal(), threshold);
         log.info("Finished \"Logout inactive users\" task");
     }
     /**

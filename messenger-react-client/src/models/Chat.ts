@@ -14,6 +14,8 @@ interface IChat {
     lastReadMsg?: Message | null;
     authorId: ID;
     canAddUsers?: boolean;
+    usersCount?: number | null;
+    onlineCount?: number | null;
 }
 
 class Chat implements IChat {
@@ -29,6 +31,8 @@ class Chat implements IChat {
     lastReadMsg?: Message | null;
     authorId: ID;
     canAddUsers?: boolean;
+    usersCount?: number | null;
+    usersOnline?: number | null;
 
     constructor(
         id?: number | string | null,
@@ -42,7 +46,9 @@ class Chat implements IChat {
         unreadMsgCount?: number | null,
         lastReadMsg?: Message | null,
         authorId?: ID,
-        canAddUsers?: boolean) {
+        canAddUsers?: boolean,
+        usersCount?: number | null,
+        usersOnline?: number | null) {
             this.id = id;
             this.name = name;
             this.private = _private;
@@ -55,6 +61,8 @@ class Chat implements IChat {
             this.lastReadMsg = lastReadMsg;
             this.authorId = authorId;
             this.canAddUsers = canAddUsers;
+            this.usersCount = usersCount;
+            this.usersOnline = usersOnline;
     }
 
     copy(): Chat {
@@ -73,7 +81,9 @@ class Chat implements IChat {
             this.unreadMsgCount,
             copylastReadMsg,
             this.authorId,
-            this.canAddUsers
+            this.canAddUsers,
+            this.usersCount,
+            this.usersOnline
         );
     }
 

@@ -10,10 +10,10 @@ import com.danver.messengerserver.repositories.mappers.ChatListRowMapper;
 import com.danver.messengerserver.repositories.mappers.ChatRowMapper;
 import com.danver.messengerserver.repositories.mappers.UserRowMapper;
 import com.danver.messengerserver.utils.Constants;
+import com.danver.messengerserver.utils.NetworkStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.namedparam.BeanPropertySqlParameterSource;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -272,66 +272,70 @@ public class ChatRepositoryImpl implements ChatRepository {
     @Transactional
     public Chat getChat(long id, Long userId) {
         String query = """
-            with participants as (
-                select
-                    c.id "chatId",
-                    array_agg(distinct uc."userId") "participants",
-                    array_agg(u.name || ' ' || u.surname) "user_names"
-                from
-                    "Chats" c
-                join "UsersChats" uc
-                    on c.id = :chatId
-                    and c.id = uc."chatId"
-                    and c.private is true
-                join "Users" u
-                    on uc."userId" = u.id
-                group by
-                    c.id
-            )
+        with participants as (
             select
-                c.*,
-                case c."private"
-                    when true
-                        then pts."participants"
-                    else
-                        null::bigint[]
-                end "participants",
-                array_to_string(pts."user_names", '|') "user_names",
-                uc."lastReadMsg",
-                m."lastChanged" "message.lastChanged",
-                (
-                    select
-                        count(*)
-                    from
-                        "Messages"
-                    where
-                        "lastChanged" >= coalesce((
-                            select
-                                m."lastChanged"
-                            from
-                                "Messages" _m
-                            where
-                                _m."id" = uc."lastReadMsg"
-                        ), to_timestamp(0))
-                        and "Messages"."chatId" = c."id"
-                        and "Messages"."id" is distinct from uc."lastReadMsg"
-                        and "Messages"."authorId" is distinct from :userId
-                ) "unreadMsgCount"
-            FROM
+                c.id "chatId",
+                array_agg(uc."userId" order by uc."userId") "participants",
+                array_agg(u.name || ' ' || u.surname order by uc."userId") "user_names"
+            from
                 "Chats" c
-            left join participants pts
-                on c."id" = pts."chatId"
-            left join "UsersChats" uc
-                on c."id" = uc."chatId"
-                and uc."userId" = :userId
-            left join "Messages" m
-                on uc."lastReadMsg" = m."id"
-            WHERE
-                c."id" = :chatId
-        """;
+            join "UsersChats" uc
+                on c.id = uc."chatId"
+            join "Users" u
+                on uc."userId" = u.id
+            where
+                c.id = :chatId
+            group by
+                c.id
+        )
+        select
+            c.*,
+            case c."private"
+                when true
+                    then pts."participants"
+                else
+                    null::bigint[]
+            end "participants",
+            array_to_string(pts."user_names", '|') "user_names",
+            uc."lastReadMsg",
+            m."lastChanged" "message.lastChanged",
+            (
+                select
+                    count(*)
+                from
+                    "Messages" msg
+                where
+                    msg."lastChanged" >= coalesce(m."lastChanged", to_timestamp(0))
+                    and msg."chatId" = c."id"
+                    and msg."id" is distinct from uc."lastReadMsg"
+                    and msg."authorId" is distinct from :userId
+            ) "unreadMsgCount",
+            cardinality(pts."participants") "usersCount",
+            (
+                select
+                    count(distinct rt."user")
+                from
+                    "RefreshTokens" rt
+                where
+                    rt."user" = any(pts."participants")
+                    and rt."networkStatus" = :online::smallint
+            ) "usersOnline"
+        FROM
+            "Chats" c
+        left join participants pts
+            on c."id" = pts."chatId"
+        left join "UsersChats" uc
+            on c."id" = uc."chatId"
+            and uc."userId" = :userId
+        left join "Messages" m
+            on uc."lastReadMsg" = m."id"
+        WHERE
+            c."id" = :chatId
+    """;
         MapSqlParameterSource namedParameters = new MapSqlParameterSource();
         namedParameters.addValue("chatId", id, Types.BIGINT);
         namedParameters.addValue("userId", userId, Types.BIGINT);
+        namedParameters.addValue("online", (short) NetworkStatus.ONLINE.toValue(), Types.SMALLINT);
         try {
             return namedParameterJdbcTemplate.queryForObject(query, namedParameters, new ChatRowMapper());
         } catch (EmptyResultDataAccessException e) {

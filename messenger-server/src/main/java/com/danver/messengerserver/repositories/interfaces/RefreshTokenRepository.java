@@ -147,11 +147,11 @@ public interface RefreshTokenRepository extends CrudRepository<RefreshToken, Lon
             update 
                 "RefreshTokens"
             set
-                "networkStatus" = :networkStatus,
-                "statusUpdateTime" = now()
+                "networkStatus" = :networkStatus
             where
-                "statusUpdateTime" < now() - make_interval(secs => :threshold::double precision);
+                "networkStatus" = :oldStatus
+                and "statusUpdateTime" < now() - make_interval(secs => :threshold::double precision);
     """)
-    int setOfflineStatusForInactiveUsers(@Param("networkStatus") short networkStatus, @Param("threshold") Long thresholdInSeconds);
+    int setOfflineStatusForInactiveUsers(@Param("networkStatus") short networkStatus, @Param("oldStatus") short oldStatus, @Param("threshold") Long thresholdInSeconds);
 }
 

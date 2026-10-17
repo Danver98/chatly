@@ -43,6 +43,8 @@ public class ChatRowMapper implements RowMapper<Chat> {
         chat.setUnreadMsgCount(rs.getInt("unreadMsgCount"));
         chat.setAuthorId(rs.getLong("authorId"));
         chat.setCanAddUsers(rs.getBoolean("canAddUsers"));
+        chat.setUsersCount(rs.getInt("usersCount"));
+        chat.setUsersOnline(rs.getInt("usersOnline"));
         return chat;
     }
 }

@@ -57,6 +57,16 @@ public class Chat {
     @Setter
     private long authorId;
 
+    @Getter
+    @Setter
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+    private int usersCount;
+
+    @Getter
+    @Setter
+    @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+    private int usersOnline;
+
     public Chat() {
 
     }

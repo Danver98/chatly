@@ -7,6 +7,7 @@ import com.danver.messengerserver.models.util.Direction;
 import com.danver.messengerserver.repositories.interfaces.UserRepository;
 import com.danver.messengerserver.repositories.mappers.UserDTORowMapper;
 import com.danver.messengerserver.repositories.mappers.UserRowMapper;
+import com.danver.messengerserver.utils.NetworkStatus;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -47,9 +48,45 @@ public class UserRepositoryImpl implements UserRepository {
 
     @Override
     public User getUser(long id) {
-        String query = "SELECT id, name, surname, email, \"avatarUrl\" FROM \"Users\" WHERE id = ?";
+        String query = """
+                select
+                    u."id",
+                    u."name",
+                    u."surname",
+                    u."email",
+                    u."avatarUrl",
+                    coalesce(
+                        (
+                            select
+                                :online::smallint
+                            from
+                                "RefreshTokens" rt
+                            where
+                                rt."user" = :userId
+                                and rt."networkStatus" = :online::smallint
+                            limit 1
+                        ),
+                        :offline::smallint
+                    ) "status",
+                    (
+                        select
+                            max(rt."statusUpdateTime")
+                        from
+                            "RefreshTokens" rt
+                        where
+                            rt."user" = :userId
+                    ) "lastVisited"
+                from
+                    "Users" u
+                where
+                    u."id" = :userId
+        """;
+        MapSqlParameterSource namedParameters = new MapSqlParameterSource();
+        namedParameters.addValue("userId", id, Types.BIGINT);
+        namedParameters.addValue("online", (short) NetworkStatus.ONLINE.toValue(), Types.SMALLINT);
+        namedParameters.addValue("offline", (short) NetworkStatus.OFFLINE.toValue(),Types.SMALLINT);
         try {
-            return jdbcTemplate.queryForObject(query, new UserDTORowMapper(), id);
+            return namedParameterJdbcTemplate.queryForObject(query, namedParameters, new UserDTORowMapper());
         } catch (EmptyResultDataAccessException e) {
             return null;
         }
@@ -58,10 +95,47 @@ public class UserRepositoryImpl implements UserRepository {
     @Override
     public User getUserByEmail(String email) {
         log.info("Getting user with login '{}' from database", email);
-        String query = "SELECT * FROM \"Users\" WHERE email = ?";
-        // We use UserRowMapper here to process password and salt
+        String query = """
+            select
+                u."id",
+                u."name",
+                u."surname",
+                u."email",
+                u."avatarUrl",
+                u."passwordHash",
+                u."salt",
+                coalesce(
+                    (
+                        select
+                            :online::smallint
+                        from
+                            "RefreshTokens" rt
+                        where
+                            rt."user" = u."id"
+                            and rt."networkStatus" = :online::smallint
+                        limit 1
+                    ),
+                    :offline::smallint
+                ) "status",
+                (
+                    select
+                        max(rt."statusUpdateTime")
+                    from
+                        "RefreshTokens" rt
+                    where
+                        rt."user" = u."id"
+                ) "lastVisited"
+            from
+                "Users" u
+            where
+                u."email" = :email
+    """;
+        MapSqlParameterSource namedParameters = new MapSqlParameterSource();
+        namedParameters.addValue("email", email, Types.VARCHAR);
+        namedParameters.addValue("online", (short) NetworkStatus.ONLINE.toValue(), Types.SMALLINT);
+        namedParameters.addValue("offline", (short) NetworkStatus.OFFLINE.toValue(),Types.SMALLINT);
         try {
-            return jdbcTemplate.queryForObject(query, new UserRowMapper(), email);
+            return namedParameterJdbcTemplate.queryForObject(query, namedParameters, new UserRowMapper());
         } catch (EmptyResultDataAccessException e) {
             return null;
         }
@@ -106,133 +180,142 @@ public class UserRepositoryImpl implements UserRepository {
             params = search.split(" ");
         }
         Long[] ids = null;
-        if (filter.getIds() != null) {
+        if (filter.getIds() != null && filter.getIds().length > 0) {
             ids = Arrays.stream(filter.getIds())
                     .boxed()
                     .toArray(Long[]::new);
         }
         MapSqlParameterSource namedParameters = new MapSqlParameterSource();
         namedParameters.addValue("name", params[0], Types.VARCHAR);
-        namedParameters.addValue("surname", params.length > 1 ? params[1] : null, Types.VARCHAR);
+        namedParameters.addValue("searchSurname", params.length > 1 ? params[1] : null, Types.VARCHAR);
         namedParameters.addValue("chatId", filter.getChatId(), Types.BIGINT);
         namedParameters.addValue("exclude", filter.getExclude(), Types.BOOLEAN);
-        namedParameters.addValue("count", filter.getCount(), Types.BIGINT);
-        namedParameters.addValue("id", dto.getId(), Types.BIGINT);
-        namedParameters.addValue("surname", dto.getSurname(), Types.VARCHAR);
+        namedParameters.addValue("count", filter.getCount() != null ? filter.getCount() : 20L, Types.BIGINT);
+        namedParameters.addValue("cursorId", dto.getId(), Types.BIGINT);
+        namedParameters.addValue("cursorSurname", dto.getSurname(), Types.VARCHAR);
         // When dealing with NamedParameterJdbcTemplate arrays in SQL-query, you should explicitly cast
         // these params to certain array type (e.g. ":ids::bigint[]"), if you have some of null check
         // (like ":ids is not null" )
         namedParameters.addValue("ids", ids, Types.ARRAY);
+        namedParameters.addValue("online", (short) NetworkStatus.ONLINE.toValue(), Types.SMALLINT);
+        namedParameters.addValue("offline", (short) NetworkStatus.OFFLINE.toValue(), Types.SMALLINT);
+        namedParameters.addValue("networkStatus",
+                filter.getStatus() != null ? (short) filter.getStatus().toValue() : null,
+                Types.SMALLINT);
         char compareSign = dto.getDirection() == Direction.FUTURE ? '>' : '<';
         String order = dto.getDirection() == Direction.FUTURE ? "ASC" : "DESC";
         String query = String.format("""
-            select
-                u.id,
-                u.name,
-                u.surname,
-                u.email,
-                u."avatarUrl",
-                u."passwordHash"
-            from
-                "Users" u
-            where
-                case
-                    when :id is null
-                        then true
-                    else
-                        case
-                            when :surname is null
-                                then u.id %c :id
-                            else
-                                (u.id, u.surname) %c (:id, :surname)
-                        end
-                end
-                and
-                case
-                    when :id is null and :ids::bigint[] is not null
-                        then u."id" = any(:ids::bigint[])
-                    else
-                        true
-                end
-                -- search
-                and
-                case
-                    -- name or surname or login
-                    when :name is not null
-                        then
-                            (u."email"  ilike '%%' || :name || '%%'
-                             or u.name ilike '%%' || :name || '%%'
-                             or u.surname ilike '%%' || :name || '%%'
-                            )
-                    else
-                        true
-                end
-                and
-                case
-                    when :surname is not null
-                        then
-                            (u.name ilike '%%' || :surname || '%%'
-                             or u.surname ilike '%%' || :surname || '%%')
-                    else
-                        true
-                end
-                and
-                -- chatId
-                case
-                    when :chatId is null
-                        then true
-                    when :exclude is not true
-                        then
-                            u.id = any((
-                                select
-                                   array_agg(uc."userId")
-                                from
-                                    "UsersChats" uc
-                                where
-                                    uc."chatId" = :chatId
-                            )::bigint[])
-                    else
-                        not (u.id = any((
+        select
+            u.id,
+            u.name,
+            u.surname,
+            u.email,
+            u."avatarUrl",
+            u."passwordHash"
+        from
+            "Users" u
+        where
+            case
+                when :cursorId is null
+                    then true
+                else
+                    case
+                        when :cursorSurname is null
+                            then u.id %c :cursorId
+                        else
+                            (u.id, u.surname) %c (:cursorId, :cursorSurname)
+                    end
+            end
+            and
+            case
+                when :cursorId is null and :ids::bigint[] is not null
+                    then u."id" = any(:ids::bigint[])
+                else
+                    true
+            end
+            -- search
+            and
+            case
+                -- name or surname or login
+                when :name is not null
+                    then
+                        (u."email"  ilike '%%' || :name || '%%'
+                         or u.name ilike '%%' || :name || '%%'
+                         or u.surname ilike '%%' || :name || '%%'
+                        )
+                else
+                    true
+            end
+            and
+            case
+                when :searchSurname is not null
+                    then
+                        (u.name ilike '%%' || :searchSurname || '%%'
+                         or u.surname ilike '%%' || :searchSurname || '%%')
+                else
+                    true
+            end
+            and
+            -- chatId
+            case
+                when :chatId is null
+                    then true
+                when :exclude is not true
+                    then
+                        exists (
                             select
-                               array_agg(uc."userId")
+                                1
                             from
                                 "UsersChats" uc
                             where
                                 uc."chatId" = :chatId
-                        )::bigint[]))
-                        -- One more filtration variant for chatId filtration
-                        -- exists (
-                        --     select
-                        --         1
-                        --     from
-                        --         "UsersChats" uc
-                        --     where
-                        --         uc."chatId" = :chatId
-                        --         and uc."userId" = u."id"
-                        -- )
-                end
-            order by
-                surname %s
-            fetch first :count rows only
-        """, compareSign, compareSign, order);
+                                and uc."userId" = u."id"
+                        )
+                else
+                    not exists (
+                        select
+                            1
+                        from
+                            "UsersChats" uc
+                        where
+                            uc."chatId" = :chatId
+                            and uc."userId" = u."id"
+                    )
+            end
+            and (
+                :networkStatus is null
+                or (
+                    case :networkStatus::smallint
+                        when :online::smallint then
+                            exists (
+                                select
+                                    1
+                                from
+                                    "RefreshTokens" rt
+                                where
+                                    rt."user" = u."id"
+                                    and rt."networkStatus" = :online::smallint
+                            )
+                        when :offline::smallint then
+                            not exists (
+                                select
+                                    1
+                                from
+                                    "RefreshTokens" rt
+                                where
+                                    rt."user" = u."id"
+                                    and rt."networkStatus" = :online::smallint
+                            )
+                        else false
+                    end
+                )
+            )
+        order by
+            u."surname" %s,
+            u."id" %s
+        fetch first :count rows only
+    """, compareSign, compareSign, order, order);
 
-/*        + ( filter.getChatId() != null ?
-                """
-                    join UsersChats uc
-                        on u.id = uc.userId
-                        and case
-                            when :exclude
-                                then uc.chatId is distinct from :chatId
-                            else
-                                uc.chatId is not distinct from :chatId
-                        end
-
-                """
-                :
-                """
-                """
-        )
-                +*/
         return namedParameterJdbcTemplate.query(query, namedParameters, new UserRowMapper());
     }
 }

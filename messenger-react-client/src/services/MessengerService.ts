@@ -78,7 +78,10 @@ class MessengerService {
             data.unreadMsgCount,
             lastReadMsg,
             data.authorId,
-            data.canAddUsers);
+            data.canAddUsers,
+            data.usersCount,
+            data.usersOnline
+        );
         return chat;
     }
 
@@ -92,7 +95,7 @@ class MessengerService {
         const rawChats: Chat[] = await HttpService.postJson(MessengerService.CHAT_URL + '/', dto, headers);
         return rawChats?.map((chat, index) => {
             const image = this.randomIntFromInterval(80, 120);
-            return new Chat(
+            const newChat =  new Chat(
                 chat.id,
                 chat.name,
                 chat.private,
@@ -111,6 +114,9 @@ class MessengerService {
                 chat.draft,
                 chat.unreadMsgCount
             );
+            newChat.usersCount = chat.usersCount;
+            newChat.usersOnline = chat.usersOnline;
+            return newChat;
         }
         )
     }

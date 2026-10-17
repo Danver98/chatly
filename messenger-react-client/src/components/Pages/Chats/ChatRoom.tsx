@@ -6,7 +6,7 @@ import Chat from "../../../models/Chat";
 import Message, { MessageData, MessageDataType, MessageType } from "../../../models/Message";
 import User from "../../../models/User";
 import { useAuthStore } from "../../../stores/authStore";;
-import { Box, Button, IconButton } from "@mui/material";
+import { Box, Button, IconButton, Typography } from "@mui/material";
 import CircularProgress from '@mui/material/CircularProgress';
 import { IPublishParams, StompHeaders } from '@stomp/stompjs';
 import { useStompClient } from "react-stomp-hooks";
@@ -535,12 +535,68 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
 
     return (
         <div className="chat-room-page">
-            <div className="chat-room-page-header">
-                <div className="chat-room-page-header__ChatName" role="button"
-                    tabIndex={0} onClick={() => {setEditMenuOpen(true)}}
+            <Box className="chat-room-page-header"
+                sx={{
+                    display: 'flex',
+                    width: '100%',
+                    alignItems: 'center',
+                    
+                    background: '#ffffff',
+                    padding: '4px 0px',
+                }}
+            >
+                <IconButton
+                    className="chat-room__closeButton"
+                    onClick={() => { closeChat?.() }}
                 >
-                    {chat.name}
-                </div>
+                    <CloseIcon
+                        fontSize="medium"
+                        />
+                </IconButton>
+                <Box className="chat-room-page-header__ChatInfo" role="button"
+                    tabIndex={0} onClick={() => {setEditMenuOpen(true)}}
+                    sx={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        flexGrow: 1,
+                        alignItems: 'flex-start',
+                        background: '#ffffff',
+                        cursor: 'pointer',
+                        mr: 1,
+                        ml: 1
+                    }}
+                >
+                    <Box className="chat-room-page-header__ChatInfo__name">
+                        <Typography sx={{
+                            fontWeight: 'bold',
+                            fontSize: '16px'
+                        }}>
+                            {chat.name}
+                        </Typography>
+                    </Box>
+                    <Box className="chat-room-page-header__ChatInfo__members"
+                        sx={{
+                            display: 'flex',
+                            flexDirection: 'row',
+                        }}
+                    >
+                        <Typography sx={{
+                                color: '#808080',
+                                fontSize: '16px'
+                            }}>
+                            {chat.usersCount} members
+                        </Typography>
+                        {  
+                            !!chat.usersOnline &&
+                            <Typography sx={{
+                                color: '#808080',
+                                fontSize: '16px'
+                            }}>
+                                , {chat.usersOnline} online
+                            </Typography>
+                        }
+                    </Box>
+                </Box>
                 {
                     <ChatRoomEdit isOpen={editMenuOpen} chatId={chat.id} user={currentUser}
                         permissions={permissions}
@@ -553,7 +609,7 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
                     permissions={permissions} closeChat={closeChat}
                 />
                 }
-            </div>
+            </Box>
             <div className="chat-room-page__CentralBlock">
                 <MessageList
                     chatId={chat.id}
@@ -574,19 +630,6 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
                     <Circle value={unreadMsgCount} clickHandler={scrollToLatestMessage}/>
                 }
                 <MessageSender handleSubmit={sendMessage} replyMessage={replyMessage} setReplyMessage={setReplyMessage}/>
-                <IconButton
-                    onClick={() => { closeChat?.() }}
-                    sx={{
-                        position: "absolute",
-                        left: "105%",
-                        top: "10px",
-                        
-                    }}
-                >
-                    <CloseIcon
-                        fontSize="large"
-                        />
-                </IconButton>
                 {/*Additional Dialogs and menus*/}
                 <MessageMenu user={currentUser} chat={chat} message={contextMenuMessage}
                     anchorPosition={contextMenuAnchorPosition} onAction={onContextMenuActionSelected}

@@ -166,30 +166,11 @@
 .chat-room-page__CentralBlock {
     display: flex;
     flex-direction: column;
-    width: 60%;
+    width: 100%;
     min-height: 0px;
     height: 100%;
     align-items: center;
     position: relative;
-}
-
-.chat-room-page-header {
-    display: flex;
-    width: 100%;
-    justify-content: center;
-    background-color: #ffffff;
-    padding: 4px 0px;
-}
-
-.chat-room-page-header__ChatName {
-    display: flex;
-    font-size: 18px;
-    flex-grow: 2;
-    align-items: center;
-    justify-content: center;
-    font-family: Verdana, Geneva, Tahoma, sans-serif;
-    background-color: #ffffff;
-    margin-right: 8px;
 }
 
 .chat-room-page__AddParticipantsBtn {

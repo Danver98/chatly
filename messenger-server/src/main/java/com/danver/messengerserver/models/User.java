@@ -1,10 +1,12 @@
 package com.danver.messengerserver.models;
 
 import java.security.Principal;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
+import com.danver.messengerserver.utils.NetworkStatus;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.*;
@@ -32,6 +34,8 @@ public class User implements UserDetails, Principal {
     @JsonAlias("avatar")
     private String avatarUrl;
     private Set<Role> roles;
+    private NetworkStatus status;
+    private Instant lastVisited;
     //private List<Chat> chats;
 
     public enum UserRoles {

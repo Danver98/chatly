@@ -49,7 +49,7 @@ const StompChatDataProviderInner = ({ children, currentUser }: { children: any, 
     }
     const chat = new Chat(chatData.id, chatData.name, chatData.private, chatData.avatar, chatData.time,
       chatData.participants, chatData.lastMessage, chatData.draft, chatData.unreadMsgCount, chatData.lastReadMsg,
-      chatData.authorId, chatData.canAddUsers);
+      chatData.authorId, chatData.canAddUsers, chatData.usersCount, chatData.usersOnline);
     if (message.type === MessageType.EXCLUDE && message.receiverId === user?.id) {
       // Current user is deleted from chat, we should unsubscribe
       stompClient?.unsubscribe(`/topic/chats/${chat.id}/messages`);
