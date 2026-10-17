@@ -6,7 +6,7 @@ import Chat from "../../../models/Chat";
 import Message, { MessageData, MessageDataType, MessageType } from "../../../models/Message";
 import User from "../../../models/User";
 import { useAuthStore } from "../../../stores/authStore";;
-import { Box, Button, IconButton, Typography } from "@mui/material";
+import { Avatar, Box, Button, IconButton, Typography } from "@mui/material";
 import CircularProgress from '@mui/material/CircularProgress';
 import { IPublishParams, StompHeaders } from '@stomp/stompjs';
 import { useStompClient } from "react-stomp-hooks";
@@ -548,11 +548,24 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
                 <IconButton
                     className="chat-room__closeButton"
                     onClick={() => { closeChat?.() }}
+                    sx={{
+                        mr: 1
+                    }}
                 >
                     <CloseIcon
                         fontSize="medium"
                         />
                 </IconButton>
+                <Avatar
+                    className="chat-room-page-header__avatar"
+                    src={chat.avatar ?? '/broken.jpg'}
+                    alt={chat.name ?? 'Chat'}
+                    sx={{
+                        width: 40,
+                        height: 40,
+                        marginRight: '4px'
+                    }}
+                />
                 <Box className="chat-room-page-header__ChatInfo" role="button"
                     tabIndex={0} onClick={() => {setEditMenuOpen(true)}}
                     sx={{
