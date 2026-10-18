@@ -121,6 +121,7 @@ const MessageBody = ({ message, user, messageActions }: { message: Message, user
                         className="message-list-item__userImage"
                         src={message.author?.avatar ?? BROKEN_IMAGE_URL}
                         alt={`${authorName[0]}${authorSurname[0]}`}
+                        children={`${authorName[0]}${authorSurname[0]}`}
                         sx={{
                             width: 50,
                             height: 50,

@@ -58,7 +58,7 @@ export default function Profile() {
         if (currentLoggedUser?.id) {
             fetchUserData(currentLoggedUser.id);
         }
-    }, []);
+    }, [currentLoggedUser?.id]);
 
     return (
         <div className="profile">
