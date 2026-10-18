@@ -211,7 +211,28 @@ public class UserRepositoryImpl implements UserRepository {
             u.surname,
             u.email,
             u."avatarUrl",
-            u."passwordHash"
+            u."passwordHash",
+            coalesce(
+                (
+                    select
+                        :online::smallint
+                    from
+                        "RefreshTokens" rt
+                    where
+                        rt."user" = u."id"
+                        and rt."networkStatus" = :online::smallint
+                    limit 1
+                ),
+                :offline::smallint
+            ) "status",
+            (
+                select
+                    max(rt."statusUpdateTime")
+                from
+                    "RefreshTokens" rt
+                where
+                    rt."user" = u."id"
+            ) "lastVisited"
         from
             "Users" u
         where

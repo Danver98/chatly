@@ -1,7 +1,7 @@
 import HttpService from "./HttpService";
 import Chat from "../models/Chat";
 import Message from "../models/Message";
-import { Headers, RANDOM_CHAT_AVATAR_URL } from "../util/Constants";
+import { Headers } from "../util/Constants";
 import { ID } from "../util/Types";
 
 export interface ChatRequestDTO {
@@ -94,12 +94,11 @@ class MessengerService {
         const headers: HeadersInit = this.getRequestResourceObjectHeader(dto.chatId);
         const rawChats: Chat[] = await HttpService.postJson(MessengerService.CHAT_URL + '/', dto, headers);
         return rawChats?.map((chat, index) => {
-            const image = this.randomIntFromInterval(80, 120);
             const newChat =  new Chat(
                 chat.id,
                 chat.name,
                 chat.private,
-                chat.avatar || (RANDOM_CHAT_AVATAR_URL + `${image}/${image}`),
+                chat.avatar,
                 chat.time,
                 chat.participants,
                 chat.lastMessage == null ? null :

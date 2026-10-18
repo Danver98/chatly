@@ -34,6 +34,10 @@ class User implements User {
         this.avatar = avatar;
         this.password = password;
     }
+
+    getFullName() {
+        return `${this.name} ${this.surname}`
+    }
 }
 
 export default User;

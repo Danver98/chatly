@@ -5,9 +5,11 @@ import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import User from "../../../models/User";
 import "./Chats.css";
-import { Button } from "@mui/material";
+import { Avatar, Button } from "@mui/material";
 import MessengerService from "../../../services/MessengerService";
 import { ID } from "../../../util/Types";
+import { stringToColor } from "../../../util/avatar";
+import { BROKEN_IMAGE_URL } from "../../../util/Constants";
 
 export interface IMessageListRef {
     messageList: any;
@@ -108,15 +110,24 @@ const JoinChatLink = ({ chatId, link }: { chatId: ID, link: string }) => {
 
 const MessageBody = ({ message, user, messageActions }: { message: Message, user?: User | null, messageActions?: IMessageActions }) => {
     const alignment = message.author?.id === user?.id ? 'right' : 'left';
+    const authorName = message.author?.name ?? '';
+    const authorSurname = message.author?.name ?? '';
     return (
         <div className={`message-list-item_container align-items-${alignment}`}>
             <div className="message-list-item__userBlock">
                 {
                     (message.author?.id !== user?.id) &&
-                    <img
-                        src={message.author?.avatar}
-                        alt=''
-                        className="message-list-item__userImage" />
+                    <Avatar
+                        className="message-list-item__userImage"
+                        src={message.author?.avatar ?? BROKEN_IMAGE_URL}
+                        alt={`${authorName[0]}${authorSurname[0]}`}
+                        sx={{
+                            width: 50,
+                            height: 50,
+                            marginRight: '4px',
+                            bgcolor: stringToColor(message.getAuthorFullName() ?? '')
+                        }}
+                    />
                 }
             </div>
             <div className="message-list-item__messageBlock">

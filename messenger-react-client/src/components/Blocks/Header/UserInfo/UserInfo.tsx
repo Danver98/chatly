@@ -1,11 +1,12 @@
 import './UserInfo.css';
 import { useNavigate } from "react-router-dom";
-import { SecuredPages } from "../../../../util/Constants";
+import { BROKEN_IMAGE_URL, SecuredPages } from "../../../../util/Constants";
 import AuthService from "../../../../services/AuthService";
-import { Box, Button, List, ListItem, ListItemButton, ListItemText, } from "@mui/material";
+import { Avatar, Box, Button, List, ListItem, ListItemButton, ListItemText, } from "@mui/material";
 import User from '../../../../models/User';
 import { useState } from 'react';
 import { useAuthStore } from '../../../../stores/authStore';
+import { stringToColor } from '../../../../util/avatar';
 
 interface UserInfoOptions {
     id: number | string;
@@ -86,15 +87,27 @@ export default function UserInfo() {
         option.handler();
     }
 
+    const altImage = user ? (user.name ? user.name[0] : '') + (user.surname ? user.surname[0] : '') 
+                            : '';
+    const fullName = user?.name && user?.surname ? user.name + ' ' + user.surname
+                            : '';
     return (
         <>
             {
                 user && accessToken ?
                     <div className="UserInfo__block">
                         {/* Logged in */}
-                        <img
-                            className="UserInfo__image-rounded"
-                            src={user.avatar}
+                        <Avatar
+                            className="chat-room-page-header__avatar"
+                            src={user.avatar ?? BROKEN_IMAGE_URL}
+                            sx={{
+                                width: 40,
+                                height: 40,
+                                bgcolor: stringToColor(fullName),
+                                mr: 1
+                            }}
+                            alt={altImage.toUpperCase()}
+                            children={altImage.toUpperCase()}
                             onClick={() => { setOptionsOpen(!optionsOpen) }}
                         />
                         {

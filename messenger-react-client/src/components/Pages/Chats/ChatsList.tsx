@@ -3,6 +3,9 @@ import Chat from "../../../models/Chat";
 import { MessageDataType, MessageType } from "../../../models/Message";
 import "./Chats.css";
 import "../../../_styles/Common.css";
+import { Avatar } from "@mui/material";
+import { BROKEN_IMAGE_URL } from "../../../util/Constants";
+import { stringToColor } from "../../../util/avatar";
 
 const LastMessage = ({ chat }: { chat: Chat }) => {
     const messageType = chat.lastMessage?.type;
@@ -31,12 +34,20 @@ const LastMessage = ({ chat }: { chat: Chat }) => {
 }
 
 const ItemBody = ({ chat }: { chat: Chat }) => {
+    const parts = chat.name?.split(' ');
+    const altImage = parts ? parts[0][0] + (parts.length > 1 ? parts[1][0] : parts[0][1]) : 'Chat';
     return (
         <>
-            <img
-                src={chat.avatar ? chat.avatar : ''}
-                alt=""
-                className="chat-list-item__image"
+            <Avatar
+                className="chat-room-page-header__avatar"
+                src={chat.avatar ?? BROKEN_IMAGE_URL}
+                sx={{
+                    width: 70,
+                    height: 70,
+                    bgcolor: stringToColor(chat.name ?? '')
+                }}
+                alt={altImage.toUpperCase()}
+                children={altImage.toUpperCase()}
             />
             <div className="chat-list-item__info">
                 <div className="chat-list-item__nameDate">

@@ -1,7 +1,8 @@
 import { useCallback, useState, useEffect, useRef, useMemo } from "react";
 import MessageList, { IMessageActions } from "./MessagesList";
 import { CHATS_COMPONENT_MSG_UNREAD_COUNT_QUEUE, DIRECTION,
-    CHATS_COMPONENT_MESSAGE_QUEUE } from "../../../util/Constants";
+    CHATS_COMPONENT_MESSAGE_QUEUE, 
+    BROKEN_IMAGE_URL} from "../../../util/Constants";
 import Chat from "../../../models/Chat";
 import Message, { MessageData, MessageDataType, MessageType } from "../../../models/Message";
 import User from "../../../models/User";
@@ -558,7 +559,7 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
                 </IconButton>
                 <Avatar
                     className="chat-room-page-header__avatar"
-                    src={chat.avatar ?? '/broken.jpg'}
+                    src={chat.avatar ?? BROKEN_IMAGE_URL}
                     alt={chat.name ?? 'Chat'}
                     sx={{
                         width: 40,

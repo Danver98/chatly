@@ -258,13 +258,6 @@
     margin-right: 16px;
 }
 
-.message-list-item__userImage {
-    display: inline-block;
-    height: 50px;
-    width: 50px;
-    border-radius: 50%;
-}
-
 .message-list-item__messageBlock {
     display: flex;
     flex-direction: column;

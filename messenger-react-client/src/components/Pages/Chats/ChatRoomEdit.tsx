@@ -10,18 +10,20 @@ import { ID } from '../../../util/Types';
 import MessengerService from '../../../services/MessengerService';
 import { Avatar, Box, FormControlLabel, Switch } from '@mui/material';
 import InputAdornment from '@mui/material/InputAdornment';
+import { styled } from '@mui/material/styles';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
+import { toast } from 'sonner';
 import { Permissions } from '../../../models/Permissions';
 import "./Chats.css";
 
 import { Snackbar, Tooltip, IconButton } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import { useState } from 'react';
 
 
 const GenerateChatInvitationLink = ({ userId, chatId }: { userId: ID, chatId: ID }) => {
 
-    const [link, setLink] = useState('');
-    const [open, setOpen] = useState(false);
+    const [link, setLink] = React.useState('');
+    const [open, setOpen] = React.useState(false);
 
     const copyLink = async () => {
         if (!link) return;
@@ -72,15 +74,52 @@ const GenerateChatInvitationLink = ({ userId, chatId }: { userId: ID, chatId: ID
     );
 };
 
+const VisuallyHiddenInput = styled('input')({
+  clipPath: 'inset(50%)',
+  height: 1,
+  overflow: 'hidden',
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  whiteSpace: 'nowrap',
+  width: 1,
+});
+
+
+function InputFileUpload({text, readOnly, handleChange, sx}: {text: string, readOnly: boolean, handleChange?: (e: any) => void, sx?: object}) {
+  return (
+    <Button
+      component="label"
+      role={undefined}
+      variant="contained"
+      disabled={readOnly}
+      tabIndex={-1}
+      startIcon={<CloudUploadIcon />}
+      sx={sx}
+    >
+      {text}
+      <VisuallyHiddenInput
+        type="file"
+        onChange={handleChange}
+        multiple
+      />
+    </Button>
+  );
+}
+
 export default function ChatRoomEdit({ isOpen = false, chatId, user, permissions, onResult = () => { } }:
     { isOpen: boolean, chatId: ID, user?: User | null, permissions?: string[], onResult?: () => void }) {
     const [open, setOpen] = React.useState(isOpen);
     const [readOnly, setReadOnly] = React.useState(true);
     const [chat, setChat] = React.useState<Chat | null>(null);
+    const [newImageUrl, setNewImageUrl] = React.useState<string | null>(null);
+    const [imageFile, setImageFile] = React.useState<File | null>(null);
 
     const handleClose = () => {
         setReadOnly(true);
         setOpen(false);
+        setNewImageUrl(null);
+        setImageFile(null);
         onResult()
     };
 
@@ -105,6 +144,16 @@ export default function ChatRoomEdit({ isOpen = false, chatId, user, permissions
         setChat(chatCopy);
     }, [chat]);
 
+    const handleFileChange = React.useCallback((event: any) => {
+        const file = event.target.files[0];
+        if (file) {
+            // Create a temporary local URL for the selected file
+            const localUrl = URL.createObjectURL(file);
+            setNewImageUrl(localUrl);
+            setImageFile(file);
+        }
+    }, []);
+
     const handleSubmit = (event: any) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
@@ -116,7 +165,15 @@ export default function ChatRoomEdit({ isOpen = false, chatId, user, permissions
 
     const saveHandler = async () => {
         if (!readOnly && chat) {
-            await MessengerService.updateChatPatch(chat);
+            const chatCopy: Chat = chat.copy();
+            if (imageFile) {
+                const chatImageUrl = await MessengerService.sendAttachment(imageFile as File, chatId, user?.id);
+                if (chatImageUrl == null) {
+                    return toast.error(`Failed to upload "${imageFile.name}" resource to the server`);
+                }
+                chatCopy.avatar = chatImageUrl;
+            }
+            await MessengerService.updateChatPatch(chatCopy);
             handleClose();
         }
         setReadOnly(!readOnly);
@@ -130,7 +187,7 @@ export default function ChatRoomEdit({ isOpen = false, chatId, user, permissions
                         sx: {
                             borderRadius: 5,
                             width: '40%',
-                            height: '70%',
+                            height: '80%',
                         }
                     }
                 }}
@@ -139,11 +196,19 @@ export default function ChatRoomEdit({ isOpen = false, chatId, user, permissions
                     <form onSubmit={handleSubmit} id="subscription-form" className="chat-room-edit__form">
                         <Avatar
                             alt="Chat avatar image"
-                            src={chat && chat?.avatar ? chat.avatar : undefined}
+                            src={newImageUrl ?? (chat && chat?.avatar ? chat.avatar : undefined)}
                             sx={{
                                 width: 180,
                                 height: 180,
                                 marginBottom: 1
+                            }}
+                        />
+                        <InputFileUpload
+                            text="Upload avatar"
+                            readOnly={readOnly}
+                            handleChange={handleFileChange}
+                            sx={{
+                                mb: 1
                             }}
                         />
                         <TextField

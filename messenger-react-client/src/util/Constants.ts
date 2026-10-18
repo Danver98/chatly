@@ -1,5 +1,3 @@
-export const RANDOM_AVATAR_URL = 'https://i.pravatar.cc/'; // /{size}
-export const RANDOM_CHAT_AVATAR_URL = 'https://random.imagecdn.app/v1/image' // /{width}/{height}
 export const ACCESS_TOKEN = 'access_token';
 export const REFRESH_TOKEN = 'refresh_token';
 export const DEVICE_ID = 'device_id';
@@ -53,3 +51,5 @@ export const NetworkStatus = {
     OFFLINE: 0,
     ONLINE: 1
 }
+
+export const BROKEN_IMAGE_URL = '/broken.jpg';
