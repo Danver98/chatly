@@ -2,7 +2,7 @@
     display: flex;
     flex-direction: column;
     min-height: 0px;
-    padding: 0px 16px 0px 16px;
+    padding: 0px 16px 8px 16px;
 }
 
 .participant-selection-popup__UserList {
@@ -16,5 +16,5 @@
 .participant-selection-popup__Confirmation {
     display: flex;
     justify-content: flex-end;
-    margin-top: 4px;
+    margin-top: 8px;
 }

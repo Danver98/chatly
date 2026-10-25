@@ -6,7 +6,7 @@ export interface UserFilter {
     /**
      * Includes name or/and surname of the user
      */
-    search?: string;
+    search?: string | null;
     /**
      * A chat to take/exclude users from
      */
@@ -21,11 +21,20 @@ export interface UserFilter {
     ids?: ID[];
 }
 
+export interface INavigation {
+    pageToken?: number | string | null;
+    maxPageSize?: number;
+    direction?: number | null;
+    cursor?: ID | null;
+}
+
 export interface UserRequestDTO {
     filter?: UserFilter,
     id?: string | number | null,
     surname?: string | null,
     direction?: number | null;
+    sorting?: object | null;
+    navigation?: INavigation | null;
 }
 
 class UserService {
@@ -41,10 +50,11 @@ class UserService {
     }
 
     async get(id: number | string): Promise<User|null> {
-        const data: User = (await HttpService.getJson(`/users/${id}`));
+        const data: any = (await HttpService.getJson(`/users/${id}`));
         if (data == null) return null;
         // Store user somewhere to retrieve in the app
-        return new User(data.id, data.name, data.surname, data.login, data.avatar, data.password);
+        return new User(data.id, data.name, data.surname, data.login, data.avatar,
+            data.password, data.status, typeof data.lastVisited === 'string' ? new Date(data.lastVisited) : data.lastVisited);
     }
 
     async create(user: object): Promise<any> {
@@ -61,7 +71,10 @@ class UserService {
     }
 
     async list(dto: UserRequestDTO, controller?: AbortController | null): Promise<User[]> {
-        return HttpService.postJson(`/users/`, dto, undefined, controller?.signal);
+        const rawUsers = await HttpService.postJson(`/users/`, dto, undefined, controller?.signal);
+        return rawUsers.map((user: any) => new User(user.id, user.name, user.surname, user.login,
+            user.avatar, user.password, user.status,
+            typeof user.lastVisited === 'string' ? new Date(user.lastVisited) : user.lastVisited));
     }
 
     async setAvatar(id: number | string, image: File): Promise<any> {

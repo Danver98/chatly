@@ -2,7 +2,7 @@ import RequestInterceptor from "../middleware/RequestInterceptor";
 import ResponseInterceptor from "../middleware/ResponseInterceptor";
 import { Headers, Pages } from "../util/Constants";
 import { ServiceUrl } from "../util/Constants";
-import { getDeviceId } from "../util/Functions";
+import { getDeviceId } from "../util/FingerprintService";
 import { toast } from "sonner";
 import { useAuthStore } from "../stores/authStore";
 

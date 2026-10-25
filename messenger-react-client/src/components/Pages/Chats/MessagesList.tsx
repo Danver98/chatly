@@ -305,7 +305,7 @@ const MessageList = forwardRef(({ chatId, messages, user, lastReadMsgIdOnOpen, i
                 setFirstUnreadMsgId(messages[0].id);
             }
         }
-    }, [chatId, messages, lastReadMsgIdOnOpen, lastMsgReadIndex, listRef, firstUnreadMsgId]);
+    }, [user?.id, chatId, messages, lastReadMsgIdOnOpen, lastMsgReadIndex, listRef, firstUnreadMsgId]);
 
     const listId = "chat-room-msg-list";
     /**

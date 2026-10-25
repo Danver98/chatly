@@ -20,7 +20,7 @@ public class UserRowMapper implements RowMapper<User> {
                 .email(rs.getString("email"))
                 .password(rs.getString("passwordHash"))
                 .avatarUrl(rs.getString("avatarUrl"))
-                .status(NetworkStatus.fromValue(rs.getShort("status")))
+                .status(NetworkStatus.fromValue(rs.getShort("networkStatus")))
                 .lastVisited(timestamp == null ? null : timestamp.toInstant())
                 .build();
     }

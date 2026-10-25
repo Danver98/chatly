@@ -1,6 +1,7 @@
 package com.danver.messengerserver.repositories.mappers;
 
 import com.danver.messengerserver.models.*;
+import lombok.NoArgsConstructor;
 import org.springframework.jdbc.core.RowMapper;
 
 import java.sql.Array;
@@ -10,14 +11,23 @@ import java.time.OffsetDateTime;
 import java.time.Instant;
 import java.util.List;
 
+@NoArgsConstructor
 public class ChatRowMapper implements RowMapper<Chat> {
+
+    // User who requests for data
+    private Long userId;
+
+    public ChatRowMapper(Long userId) {
+        this.userId = userId;
+    }
+
     @Override
     public Chat mapRow(ResultSet rs, int rowNum) throws SQLException {
         Chat chat = new Chat();
         chat.setId(rs.getLong("id"));
         boolean isPrivate = rs.getBoolean("private");
         if (isPrivate) {
-            chat.setName(rs.getString("user_names"));
+            chat.setName(rs.getString("displayName"));
         } else {
             chat.setName(rs.getString("name"));
         }

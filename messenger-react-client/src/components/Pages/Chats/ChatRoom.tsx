@@ -306,16 +306,16 @@ export default function ChatRoom({ chat, closeChat }: { chat: Chat, closeChat?: 
             } as StompHeaders
         }
         stompClient?.publish(params);
-        if (chat.private) {
-            // TODO: in private chats we don't get back our messages, so we've to insert it manually
-            setMessages((prevMessages: Message[]) =>
-                [message, ...prevMessages]);
-            // send message to chats component queue
-            bus.emit(CHATS_COMPONENT_MESSAGE_QUEUE, {
-                message: message,
-                chat: chat
-            });
-        }
+        // if (chat.private) {
+        //     // TODO: in private chats we don't get back our messages, so we've to insert it manually
+        //     setMessages((prevMessages: Message[]) =>
+        //         [message, ...prevMessages]);
+        //     // send message to chats component queue
+        //     bus.emit(CHATS_COMPONENT_MESSAGE_QUEUE, {
+        //         message: message,
+        //         chat: chat
+        //     });
+        // }
         if (replyMessage) {
             setReplyMessage(null);
         }

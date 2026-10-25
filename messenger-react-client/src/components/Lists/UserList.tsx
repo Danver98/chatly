@@ -1,270 +1,277 @@
 import {
-    Avatar, Box, Button, Checkbox, Dialog, FormControlLabel, InputAdornment, List, ListItem, ListItemAvatar,
-    ListItemText, Switch, TextField
+    Avatar, Box, Button, Checkbox, Dialog, FormControlLabel, InputAdornment,
+    List, ListItem, ListItemAvatar, ListItemText, Switch, TextField,
 } from "@mui/material";
 import SearchIcon from '@mui/icons-material/Search';
 import User from "../../models/User";
-import UserService, { UserRequestDTO } from "../../services/UserService";
-import { forwardRef, useCallback, useEffect, useMemo, useState, useRef } from "react";
-import { DIRECTION } from "../../util/Constants";
+import { forwardRef, useCallback, useMemo, useState } from "react";
 import "./UserList.css";
 import { toast } from 'sonner';
+import CircularProgress from '@mui/material/CircularProgress';
 
-const SearchBar = ({ onChange }: { onChange: (value: string) => any }) => {
-    return (
-        <TextField
-            id="standard-basic"
-            label="Enter user credentials"
-            variant="standard"
-            fullWidth
-            margin="normal"
-            slotProps={{
-                input: {
-                    endAdornment: (
-                        <InputAdornment position="end">
-                            <SearchIcon />
-                        </InputAdornment>
-                    ),
-                }
-            }}
-            onChange={(e: any) => {
-                onChange(e.target.value)
-            }}
-        />
-    )
+import { useFetchUsers } from "../Pages/Chats/FetchData";
+import { INavigation, UserFilter } from "../../services/UserService";
+import { stringToColor } from "../../util/avatar";
+import { getUserNetworkStatus } from "../../util/Functions";
+import { BROKEN_IMAGE_URL } from "../../util/Constants";
+
+
+const SearchBar = ({ onChange }: { onChange: (value: string) => any }) => (
+    <TextField
+        id="standard-basic"
+        label="Enter user credentials"
+        variant="standard"
+        fullWidth
+        margin="normal"
+        slotProps={{
+            input: {
+                endAdornment: (
+                    <InputAdornment position="end">
+                        <SearchIcon />
+                    </InputAdornment>
+                ),
+            },
+        }}
+        onChange={(e) => onChange(e.target.value)}
+    />
+);
+
+const UserList = forwardRef(
+    (
+        { users, checked, handleToggle, multiSelect }: {
+            users: User[];
+            checked: number[];
+            handleToggle: (value: number) => any;
+            multiSelect?: boolean | null;
+        },
+        ref?: any,
+    ) => {
+        if (users == null || users.length === 0) {
+            return <>No users found!</>;
+        }
+        const now = new Date();
+        return (
+            <Box>
+                <List>
+                    {users.map((user: User, index) => {
+                        const name = user.name ?? '';
+                        const surname = user.surname ?? '';
+                        const altImgText = name[0].toUpperCase() + ' ' + surname[0].toUpperCase();
+                        const statusLabel = getUserNetworkStatus(user, now);
+                        return (
+                            <ListItem
+                                key={user.id}
+                                ref={index === users.length - 1 ? ref : null}
+                                secondaryAction={
+                                    <Checkbox
+                                        disabled={!multiSelect && checked.length > 0 && !checked.includes(index)}
+                                        checked={checked.includes(index)}
+                                        onChange={() => handleToggle(index)}
+                                    />
+                                }
+                            >
+                                <ListItemAvatar>
+                                    <Avatar
+                                        src={user.avatar ?? BROKEN_IMAGE_URL}
+                                        alt={altImgText}
+                                        children={altImgText}
+                                        sx={{
+                                            width: 50,
+                                            height: 50,
+                                            marginRight: '4px',
+                                            bgcolor: stringToColor(name + ' ' + surname)
+                                        }}
+                                    />
+                                </ListItemAvatar>
+                                <Box
+                                    sx={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        justifyContent: 'center',
+                                    }}
+                                >
+                                    <ListItemText
+                                        sx={{
+                                            mb: 0,
+                                        }}
+                                        primary={user.name + ' ' + user.surname}
+                                    >
+                                    </ListItemText>
+                                    <ListItemText
+                                        sx={{
+                                            mt: 0,
+                                        }}
+                                        secondary={statusLabel}
+                                        slotProps={{
+                                            secondary: {
+                                                sx: { color: statusLabel === 'Online' ? 'info.main' : 'text.secondary' }
+                                            }
+                                        }}
+                                    >
+                                    </ListItemText>
+                                </Box>
+                            </ListItem>
+                        )
+                    })}
+                </List>
+            </Box>
+        );
+    },
+);
+
+export interface UserSelectionProps {
+    user?: User | null;
+    open: boolean;
+    onClose: () => any;
+    requestFilter?: object;
+    onResult: (elements: any[], params?: any | null) => any;
 }
 
-const UserList = forwardRef(({ users, checked, handleToggle, multiSelect }:
-    { users: User[], checked: number[], handleToggle: (value: number) => any, multiSelect?: boolean | null }, ref?: any) => {
-    if (users == null || users.length === 0) {
-        return (
-            <>
-                No users found!
-            </>
-        )
-    }
-    return (
-        <Box >
-            <List>
-                {
-                    users.map((user, index) =>
-                        <ListItem
-                            key={user.id}
-                            ref={index === users.length - 1 ? ref : null}
-                            secondaryAction={
-                                <Checkbox
-                                    disabled={!multiSelect && checked.length > 0 && !checked.includes(index)}
-                                    checked={checked.includes(index)}
-                                    onChange={(event) => handleToggle(index)}
-                                />
-                            }
-                        >
-                            <ListItemAvatar >
-                                <Avatar src={user.avatar} />
-                            </ListItemAvatar>
-                            <ListItemText
-                                primary={user.name + ' ' + user.surname}
-                            >
-                            </ListItemText>
-                        </ListItem>
-                    )
-                }
-            </List>
-        </Box>
-    )
-});
+/**
+ * Public wrapper: mounts the inner dialog only when open, so useFetchUsers
+ * doesn't fetch while the dialog is closed. Also resets internal state on
+ * each open (unmount/remount) — which is what the old useEffects were doing.
+ */
+export default function UserSelection(props: UserSelectionProps) {
+    if (!props.open) return null;
+    return <UserSelectionInner {...props} />;
+}
 
-const UserSelection = ({ user, requestFilter, onResult }:
-    { user?: User | null, requestFilter?: object, onResult: (elements: any[], params?: any | null) => any }) => {
-
-    const [open, setOpen] = useState(false);
-    const [users, setUsers] = useState<User[]>([]);
-    const [search, setSearch] = useState("");
-    const [checked, setChecked] = useState<any[]>([]);
+function UserSelectionInner({ user, onClose, requestFilter, onResult }: UserSelectionProps) {
+    const [search, setSearch] = useState<string | null>(null);
+    const [checked, setChecked] = useState<number[]>([]);
     const [multiSelect, setMultiSelect] = useState(false);
     const [chatName, setChatName] = useState<string | null>(null);
-    const [lastElementRef, setLastElementRef] = useState(null);
-    const observerRef = useRef<IntersectionObserver | null>(null);
-    const [intersected, setIntersected] = useState(false);
-    const [hasMore, setHasMore] = useState(true);
-    const abortController = useMemo(() => {
-        return new AbortController();
-    }, []);
 
-    const handleToggle = (position: number) => {
-        if (!multiSelect && checked.length > 1) return;
-        const currentIndex = checked.indexOf(position);
-        const newChecked = [...checked];
+    // Memoize filter / sorting / navigation so useFetchUsers' effect
+    // does not re-run on every render.
+    const filter: UserFilter = useMemo(
+        () => ({ ...(requestFilter ?? {}), search } as UserFilter),
+        [requestFilter, search],
+    );
+    const sorting = useMemo(() => ({ networkStatus: 'DESC' }), []);
+    const navigation: INavigation = useMemo(
+        () => ({ maxPageSize: 50, cursor: null }),
+        [],
+    );
 
-        if (currentIndex === -1) {
-            newChecked.push(position);
-        } else {
-            newChecked.splice(currentIndex, 1);
-        }
+    const { users, isLoading, hasMore, loadMore } = useFetchUsers(
+        filter,
+        sorting,
+        navigation,
+    );
 
-        setChecked(newChecked);
-    };
+    const handleToggle = useCallback(
+        (position: number) => {
+            if (!multiSelect && checked.length > 1) return;
+            setChecked((prev) => {
+                const currentIndex = prev.indexOf(position);
+                if (currentIndex === -1) return [...prev, position];
+                const next = [...prev];
+                next.splice(currentIndex, 1);
+                return next;
+            });
+        },
+        [multiSelect, checked.length],
+    );
 
-    const handleClickOpen = useCallback(() => {
-        setOpen(true);
-    }, []);
+    const handleClose = useCallback(() => {
+        // State is discarded by unmount (wrapper returns null when closed),
+        // so we only notify the parent here.
+        onClose();
+    }, [onClose]);
 
-    const handeClickClose = useCallback(() => {
-        setChecked([]);
-        setMultiSelect(false);
-        setOpen(false);
-    }, []);
-
-    const handleClickOk = useCallback(() => {
+    const handleOk = useCallback(() => {
         if (multiSelect && (chatName == null || chatName === '')) {
             toast.warning(`You'd set a chat name!`);
             return;
         }
         const ids = checked.map((position) => users[position].id);
-        handeClickClose();
-        onResult(ids, {
-            chatName,
-            multiSelect
-        });
-    }, [users, checked, chatName, multiSelect, onResult, handeClickClose]);
+        onClose();
+        onResult(ids, { chatName, multiSelect });
+    }, [users, checked, chatName, multiSelect, onResult, onClose]);
 
-    useEffect(() => {
-        observerRef.current = new IntersectionObserver(
-            (entries) => {
-                if (entries[0].isIntersecting) {
-                    setIntersected((prev) => !prev);
-                }
-            }
-        );
-    }, []); // Runs on start only
-
-    useEffect(() => {
-        const observerCurrent = observerRef.current;
-
-        if (lastElementRef) {
-            observerCurrent?.observe(lastElementRef);
-        }
-
-        return () => {
-            if (lastElementRef) {
-                observerCurrent?.disconnect();
-            }
-        };
-    }, [lastElementRef]);
-
-    useEffect(() => {
-        const fetchUsers = async (dto: UserRequestDTO) => {
-            if (!(open && hasMore)) return;
-            if (search) {
-                // In case of search is present start requesting from 3 symbols-lenght string
-                if (search.length > 2) {
-                    const newUsers = await UserService.list(dto, abortController);
-                    setUsers((prevUsers) => [...prevUsers, ...newUsers]);
-                    setHasMore(newUsers && newUsers.length > 0);
-                }
-            } else {
-                const newUsers = await UserService.list(dto, abortController);
-                // Check if answer contains data
-                setUsers((prevUsers) => [...prevUsers, ...newUsers]);
-                setHasMore(newUsers && newUsers.length > 0);
-            }
-        }
-        // If we've already started a new request, cancel it
-        const dto: UserRequestDTO = {
-            filter: {
-                ...requestFilter,
-                search: search
-            },
-            id: users && users.length ? users[users.length - 1].id : null,
-            surname: users && users.length ? users[users.length - 1].surname : null,
-            direction: DIRECTION.FUTURE //getting users alphabetically
-        }
-
-        fetchUsers(dto);
-
-        return () => {
-            //abortController.abort();
-        };
-
-    }, [open, search, intersected, users, abortController, hasMore, requestFilter]);
+    // Simple IntersectionObserver wired to loadMore. The hook itself guards
+    // against concurrent/duplicate loadMore calls, so no local "hasMore" or
+    // "isLoading" checks are needed here.
+    const lastElementRef = useCallback(
+        (node: Element | null) => {
+            if (!node) return;
+            const observer = new IntersectionObserver((entries) => {
+                if (entries[0].isIntersecting) loadMore();
+            });
+            observer.observe(node);
+            return () => observer.disconnect();
+        },
+        [loadMore],
+    );
 
     return (
-        <div className="">
-            <Button
-                type="submit"
-                variant="contained"
-                onClick={() => { handleClickOpen() }}
-                sx={{
-                    position: "absolute",
-                    bottom: 5,
-                    right: 5,
-                    width: '60px',
-                    height: '60px',
-                    borderRadius: '50%',
-                }}
-            >
-                Go
-            </Button>
-            <Dialog
-                open={open}
-                onClose={() => handeClickClose()}
-                fullWidth={true}
-                maxWidth="sm"
-            >
-                <div className="participant-selection-popup-content-wrapper">
-                    <FormControlLabel
-                        control={<Switch
-                            checked={!multiSelect}
-                            onChange={(event: any) => setMultiSelect(!event.target.checked)}
-                        />}
-                        label="Private chat"
-
-                    />
-                    {
-                        multiSelect &&
-                        <TextField
-                            label="Chat name"
-                            required
-                            onChange={(event: any) => setChatName(event.target.value)}
-                        >
-
-                        </TextField>
-                    }
-                    <div className="participant-selection-popup__SearchBar">
-                        <SearchBar
-                            onChange={setSearch}
+        <Dialog open onClose={handleClose} fullWidth maxWidth="sm"
+            slotProps={{
+                paper: {
+                    sx: {
+                        borderRadius: 3,
+                        height: '90vh',
+                        maxHeight: '90vh',
+                    },
+                },
+            }}
+        >
+            {
+                isLoading && (!users || users.length === 0)
+                    ? <Box
+                        sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                        <CircularProgress />
+                      </Box>
+                    :
+                    <div className="participant-selection-popup-content-wrapper">
+                        <FormControlLabel
+                            control={
+                                <Switch
+                                    checked={!multiSelect}
+                                    onChange={(e) => setMultiSelect(!e.target.checked)}
+                                />
+                            }
+                            label="Private chat"
                         />
+                        {multiSelect && (
+                            <TextField
+                                label="Chat name"
+                                required
+                                onChange={(e) => setChatName(e.target.value)}
+                            />
+                        )}
+                        <div className="participant-selection-popup__SearchBar">
+                            <SearchBar onChange={setSearch} />
+                        </div>
+                        <div className="participant-selection-popup__UserList">
+                            <UserList
+                                users={users}
+                                checked={checked}
+                                handleToggle={handleToggle}
+                                ref={lastElementRef}
+                                multiSelect={multiSelect}
+                            />
+                        </div>
+                        <div className="participant-selection-popup__Confirmation">
+                            <Button
+                                variant="contained"
+                                onClick={handleClose}
+                                sx={{ marginRight: '8px' }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="contained"
+                                disabled={checked.length === 0 || isLoading}
+                                onClick={handleOk}
+                            >
+                                Ready
+                            </Button>
+                        </div>
                     </div>
-                    <div className="participant-selection-popup__UserList">
-                        <UserList
-                            users={users}
-                            checked={checked}
-                            handleToggle={handleToggle}
-                            ref={setLastElementRef}
-                            multiSelect={multiSelect}
-                        />
-                    </div>
-                    <div className="participant-selection-popup__Confirmation">
-                        <Button
-                            variant="contained"
-                            onClick={() => { handeClickClose()}}
-                            sx={{
-                                marginRight: '8px'
-                            }}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            variant="contained"
-                            disabled={checked.length === 0}
-                            onClick={() => handleClickOk()}
-                        >
-                            Ready
-                        </Button>
-                    </div>
-                </div>
-            </Dialog>
-        </div>
-    )
-};
-export default UserSelection;
+            }
+        </Dialog>
+    );
+}

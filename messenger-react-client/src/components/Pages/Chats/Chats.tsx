@@ -1,280 +1,250 @@
-import { useCallback, useEffect, useState, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useFetchChats } from "./FetchData";
-import "./Chats.css"
+import "./Chats.css";
 import ChatsList from "./ChatsList";
-import { CHATS_COMPONENT_MESSAGE_QUEUE, CHATS_COMPONENT_MSG_UNREAD_COUNT_QUEUE, DIRECTION } from "../../../util/Constants";
+import {
+    CHATS_COMPONENT_MESSAGE_QUEUE,
+    CHATS_COMPONENT_MSG_UNREAD_COUNT_QUEUE,
+    DIRECTION,
+} from "../../../util/Constants";
 import ChatRoom from "./ChatRoom";
 import Chat from "../../../models/Chat";
-import { InputAdornment, TextField } from "@mui/material";
-import SearchIcon from '@mui/icons-material/Search';
-import { useListener } from 'react-bus';
+import { Button, InputAdornment, TextField } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import { useListener } from "react-bus";
 import Message, { MessageType } from "../../../models/Message";
-import MessengerService from "../../../services/MessengerService";
 import ChatCreation from "../../Lists/UserList";
 import { useAuthStore } from "../../../stores/authStore";
 import { ID } from "../../../util/Types";
+import { useChatStore } from "../../../stores/chatStore";
 
 export interface ChatCreationParams {
     chatName: string | null;
     multiSelect: boolean | null;
 }
 
-const SearchBar = ({ onChange }: { onChange: (value: string) => any }) => {
-    return (
-        <TextField
-            id="standard-basic"
-            label="Search"
-            variant="filled"
-            type="search"
-            size="small"
-            sx={{
-                mt: 1,
-                mr: 1,
-                ml: 1,
-                "& .MuiFilledInput-root": {
-                    borderTopLeftRadius: "25px",
-                    borderTopRightRadius: "25px",
-                    borderBottomLeftRadius: "25px",
-                    borderBottomRightRadius: "25px",
-
-                },
-            }}
-            slotProps={{
-                input: {
-                    disableUnderline: true,
-                    endAdornment: (
-                        <InputAdornment position="end">
-                            <SearchIcon />
-                        </InputAdornment>
-                    ),
-                }
-            }}
-            onChange={(e: any) => {
-                onChange(e.target.value)
-            }}
-        />
-    )
-}
-
+const SearchBar = ({ onChange }: { onChange: (value: string) => any }) => (
+    <TextField
+        id="standard-basic"
+        label="Search"
+        variant="filled"
+        type="search"
+        size="small"
+        sx={{
+            mt: 1, mr: 1, ml: 1,
+            "& .MuiFilledInput-root": {
+                borderTopLeftRadius: "25px",
+                borderTopRightRadius: "25px",
+                borderBottomLeftRadius: "25px",
+                borderBottomRightRadius: "25px",
+            },
+        }}
+        slotProps={{
+            input: {
+                disableUnderline: true,
+                endAdornment: (
+                    <InputAdornment position="end">
+                        <SearchIcon />
+                    </InputAdornment>
+                ),
+            },
+        }}
+        onChange={(e: any) => onChange(e.target.value)}
+    />
+);
 
 export default function Chats() {
-    const [lastElementRef, setLastElementRef] = useState(null);
-    const currentUser = useAuthStore(state => state.currentLoggedUser);
+    const [lastElementRef, setLastElementRef] = useState<Element | null>(null);
+    const currentUser = useAuthStore((s) => s.currentLoggedUser);
     const userId = currentUser?.id;
-    const [activeChat, setActiveChat] = useState<Chat | null>(null);
-    // TODO: direction
 
-    const { chats, setChats, loading, hasMore, error, refresh, loadMore } =
+    const chats = useChatStore((s) => s.chats);
+    const activeChat = useChatStore((s) => s.activeChat);
+    const setChats = useChatStore((s) => s.setChats);
+    const closeActiveChat = useChatStore((s) => s.closeActiveChat);
+    const openChatById = useChatStore((s) => s.openChatById);
+    const [creationDialogOpen, setCreationDialogOpen] = useState(false);
+
+    const { loading, hasMore, error, refresh, loadMore } =
         useFetchChats(userId ?? 0, DIRECTION.PAST, 50);
 
-    const activeChatIdRef = useRef<number | string | null>(activeChat?.id);
-    useEffect(() => {
-        activeChatIdRef.current = activeChat?.id;
-    });
+    // Refs used by memoized handlers to see fresh values without re-subscribing.
+    const activeChatIdRef = useRef<ID | null>(activeChat?.id ?? null);
+    useEffect(() => { activeChatIdRef.current = activeChat?.id ?? null; });
 
     const chatsRef = useRef(chats);
-    useEffect(() => {
-        chatsRef.current = chats;
-    });
+    useEffect(() => { chatsRef.current = chats; }, [chats]);
 
     const loadMoreRef = useRef(loadMore);
-    useEffect(() => {
-        loadMoreRef.current = loadMore;
-    });
+    useEffect(() => { loadMoreRef.current = loadMore; }, [loadMore]);
 
-    // New message's been sent
-    const onMessageReceived = useCallback(async (dto: any) => {
-        const msg: Message = dto.message;
-        const chat: Chat = dto.chat;
-        // Case 0: deleting last sent message for a chat
-        // We need to update chats list by simple refreshing
-        if (msg.type === MessageType.DELETE && msg.chatId === chat.id) {
-            const rawPayload = msg.data?.data;
-            if (rawPayload == null) return;
-            const deleteIds: ID[] = Array.isArray(rawPayload) ? rawPayload : [rawPayload];
-            if (deleteIds.length === 0) return;
+    const onMessageReceived = useCallback(
+        async (dto: any) => {
+            const msg: Message = dto.message;
+            const chat: Chat = dto.chat;
 
-            const chatToUpdate = chatsRef.current.find(c => c.id === chat.id);
-            if (!chatToUpdate) return;
-            if (!deleteIds.includes(chatToUpdate.lastMessage?.id)) return;
-            refresh();
-            return;
-        }
-        const message = new Message(
-            msg.id, msg.chatId, msg.receiverId,
-            msg.type, msg.data, msg.author, msg.time
-        );
+            // Case 0: delete of the last message → refresh from server.
+            if (msg.type === MessageType.DELETE && msg.chatId === chat.id) {
+                const rawPayload = msg.data?.data;
+                if (rawPayload == null) return;
+                const deleteIds: ID[] = Array.isArray(rawPayload) ? rawPayload : [rawPayload];
+                if (deleteIds.length === 0) return;
 
-        // Case 1: user is being added to a chat they don't yet have in their list.
-        if (
-            (msg.type === MessageType.CREATION ||
-                (msg.type === MessageType.JOIN && message.author?.id === userId)) &&
-            chat != null
-        ) {
-            const newChat = new Chat(
-                chat.id,
-                chat.name,
-                chat.private,
-                chat.avatar,
-                chat.time,
-                chat.participants,
-                message,
-                chat.draft,
-                dto.unreadMsgCount != null ? dto.unreadMsgCount + 1 :
-                    chat.unreadMsgCount != null ? chat.unreadMsgCount + 1 : null,
-                message // last read message
+                const chatToUpdate = chatsRef.current.find((c) => c.id === chat.id);
+                if (!chatToUpdate) return;
+                if (!deleteIds.includes(chatToUpdate.lastMessage?.id as ID)) return;
+                refresh();
+                return;
+            }
+
+            const message = new Message(
+                msg.id, msg.chatId, msg.receiverId,
+                msg.type, msg.data, msg.author, msg.time,
             );
-            setChats((prevChats) => [newChat, ...prevChats]);
 
-            if (msg.type === MessageType.JOIN) {
-                // Server-side fetch to get the fully-hydrated chat object.
-                const joinedChat = await MessengerService.getChat(chat.id, userId);
-                setActiveChat(joinedChat);
-            }
-            return;
-        }
+            // Case 1: user is being added to a chat they don't yet have.
+            if (
+                (msg.type === MessageType.CREATION ||
+                    (msg.type === MessageType.JOIN && message.author?.id === userId)) &&
+                chat != null
+            ) {
+                const newChat = new Chat(
+                    chat.id, chat.name, chat.private, chat.avatar, chat.time,
+                    chat.participants, message, chat.draft,
+                    dto.unreadMsgCount != null
+                        ? dto.unreadMsgCount + 1
+                        : chat.unreadMsgCount != null
+                            ? chat.unreadMsgCount + 1
+                            : null,
+                    message,
+                );
+                setChats((prev) => [newChat, ...prev]);
 
-        // Case 2: the message belongs to an existing chat in the list.
-        // Everything is computed inside the functional updater so `prevChats`
-        // is guaranteed to be the latest committed state.
-        setChats((prevChats) => {
-            const filteredChats: Chat[] = [];
-            let updatedChat: Chat | null = null;
-
-            for (const element of prevChats) {
-                if (element.id === msg.chatId) {
-                    updatedChat = new Chat(
-                        element.id,
-                        element.name,
-                        element.private,
-                        element.avatar,
-                        element.time,
-                        element.participants,
-                        message,
-                        element.draft,
-                        dto.unreadMsgCount != null
-                            ? dto.unreadMsgCount + 1
-                            : element.unreadMsgCount != null
-                                ? element.unreadMsgCount + 1
-                                : element.id !== activeChatIdRef.current
-                                    ? 1
-                                    : null
-                    );
-                } else {
-                    filteredChats.push(element);
+                if (msg.type === MessageType.JOIN && chat.id != null && userId != null) {
+                    await openChatById(chat.id, userId);
                 }
+                return;
             }
 
-            // Chat isn't in the list and isn't a CREATION/JOIN → nothing to do.
-            if (updatedChat == null) {
-                return prevChats;
-            }
+            // Case 2: update existing chat + move to top.
+            setChats((prev) => {
+                const rest: Chat[] = [];
+                let updated: Chat | null = null;
+                for (const el of prev) {
+                    if (el.id === msg.chatId) {
+                        updated = new Chat(
+                            el.id, el.name, el.private, el.avatar, el.time,
+                            el.participants, message, el.draft,
+                            dto.unreadMsgCount != null
+                                ? dto.unreadMsgCount + 1
+                                : el.unreadMsgCount != null
+                                    ? el.unreadMsgCount + 1
+                                    : el.id !== activeChatIdRef.current
+                                        ? 1
+                                        : null,
+                        );
+                    } else {
+                        rest.push(el);
+                    }
+                }
+                if (updated == null) return prev;
+                return [updated, ...rest];
+            });
+        },
+        [userId, refresh, setChats, openChatById],
+    );
 
-            return [updatedChat, ...filteredChats];
-        });
-    }, [userId, refresh]);
-
-    // New message's been sent
     useListener(CHATS_COMPONENT_MESSAGE_QUEUE, onMessageReceived);
 
-    const handleUnreadCount = useCallback((dto: any) => {
-        if (dto.chatId == null) {
-            return;
-        }
-        setChats((prevChats) =>
-            prevChats.map((element: Chat) => {
-                if (element.id !== dto.chatId) {
-                    return element;
-                }
-                return new Chat(
-                    element.id,
-                    element.name,
-                    element.private,
-                    element.avatar,
-                    element.time,
-                    element.participants,
-                    element.lastMessage,
-                    element.draft,
-                    dto.unreadMsgCount === 0 ? null : dto.unreadMsgCount
-                );
-            })
-        );  
-    }, []);
+    const handleUnreadCount = useCallback(
+        (dto: any) => {
+            if (dto.chatId == null) return;
+            setChats((prev) =>
+                prev.map((el) =>
+                    el.id !== dto.chatId
+                        ? el
+                        : new Chat(
+                            el.id, el.name, el.private, el.avatar, el.time,
+                            el.participants, el.lastMessage, el.draft,
+                            dto.unreadMsgCount === 0 ? null : dto.unreadMsgCount,
+                        ),
+                ),
+            );
+        },
+        [setChats],
+    );
 
-    // Update chat list unread messages counter when chat room is open
     useListener(CHATS_COMPONENT_MSG_UNREAD_COUNT_QUEUE, handleUnreadCount);
 
     useEffect(() => {
         if (!lastElementRef) return;
-
         const observer = new IntersectionObserver((entries) => {
-            if (entries[0].isIntersecting) {
-                loadMoreRef.current();
-            }
+            if (entries[0].isIntersecting) loadMoreRef.current();
         });
-
         observer.observe(lastElementRef);
         return () => observer.disconnect();
     }, [lastElementRef]);
 
-    const activeChatRequestIdRef = useRef(0);
+    const handleClick = useCallback(
+        (chat: Chat) => {
+            if (userId && chat.id != null) void openChatById(chat.id, userId);
+        },
+        [openChatById, userId],
+    );
 
-    const handleClick = useCallback(async (chat: Chat) => {
-        const requestId = ++activeChatRequestIdRef.current;
-        const fetchedChat = await MessengerService.getChat(chat.id, userId);
-        if (requestId !== activeChatRequestIdRef.current) return;
-        setActiveChat(fetchedChat);
-    }, [userId]);
-
-    const handleChatCreation = useCallback(async (users: any[], params?: ChatCreationParams | null) => {
-        // Create private chat if doesn't exist or redirect to it
-        const newChat = new Chat(
-            null,
-            params?.chatName || null,
-            !params?.multiSelect, //private
-            null,
-            null,
-            [currentUser?.id, ...users], // participants
-            null,
-            true //draft
-        );
-        const fetchedChat = await MessengerService.createChat(newChat);
-        setActiveChat(fetchedChat);
-    }, [currentUser?.id]);
+    const handleChatCreation = useCallback(
+        (users: any[], params?: ChatCreationParams | null) => {
+            if (!currentUser?.id) return;
+            void useChatStore
+                .getState()
+                .createChatFromParticipants(currentUser.id, users, params ?? null);
+        },
+        [currentUser?.id],
+    );
 
     return (
-        <>
-            <div className="chat-page">
-                {/* <div> Last chat info: {chats && chats.length ? chats[chats.length - 1].toString() : null}</div> */}
-                <div className="chat-dashboard">
-                    <div className="chat-dashboard__left">
-                        <SearchBar
-                            onChange={() => { }}
-                        />
-                        <ChatsList
-                            chats={chats}
-                            ref={setLastElementRef}
-                            itemClickHandler={handleClick}
-                        />
-                        <ChatCreation
-                            user={currentUser}
-                            onResult={(elements: any[], params?: ChatCreationParams | null) => { handleChatCreation(elements, params) }}
-                        />
-                    </div>
-                    <div className="chat-dashboard__right">
-                        {
-                            activeChat &&
-                            <ChatRoom chat={activeChat} closeChat={() => { setActiveChat(null) }} />
-                        }
-                        {
-                            activeChat == null &&
-                            <div className="chat-room__empty">
-                                Select chat to start messaging
-                            </div>
-                        }
-                    </div>
+        <div className="chat-page">
+            <div className="chat-dashboard">
+                <div className="chat-dashboard__left">
+                    <SearchBar onChange={() => {}} />
+                    <ChatsList
+                        chats={chats}
+                        ref={setLastElementRef}
+                        itemClickHandler={handleClick}
+                    />
+                    <ChatCreation
+                        user={currentUser}
+                        open={creationDialogOpen}
+                        onClose={() => setCreationDialogOpen(false)}
+                        onResult={(elements, params) => handleChatCreation(elements, params)}
+                    />
+                </div>
+                <div className="chat-dashboard__right">
+                    {activeChat && (
+                        <ChatRoom chat={activeChat} closeChat={closeActiveChat} />
+                    )}
+                    {activeChat == null && (
+                        <div className="chat-room__empty" style={{ position: 'relative' }}>
+                            <div>Select chat to start messaging</div>
+                            <Button
+                                variant="contained"
+                                onClick={() => setCreationDialogOpen(true)}
+                                sx={{
+                                    position: "absolute",
+                                    bottom: 20,
+                                    right: 20,
+                                    width: '60px',
+                                    height: '60px',
+                                    borderRadius: '50%',
+                                    minWidth: 0, // override MUI's default Button min-width for round buttons
+                                }}
+                            >
+                                Go
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </div>
-        </>
-    )
+        </div>
+    );
 }

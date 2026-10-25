@@ -287,6 +287,19 @@ public class ChatRepositoryImpl implements ChatRepository {
                 c.id = :chatId
             group by
                 c.id
+        ),
+        private_name as (
+            select
+                uc."chatId" "id",
+                u.name || ' ' || u.surname "other_name"
+            from
+                "UsersChats" uc
+            join "Users" u on uc."userId" = u.id
+            where
+                uc."chatId" = :chatId
+                and :userId is not null
+                and uc."userId" is distinct from :userId
+            limit 1
         )
         select
             c.*,
@@ -297,6 +310,12 @@ public class ChatRepositoryImpl implements ChatRepository {
                     null::bigint[]
             end "participants",
             array_to_string(pts."user_names", '|') "user_names",
+            case
+                when c."private" is true
+                    then pn."other_name"
+                else
+                    c."name"
+            end "displayName",
             uc."lastReadMsg",
             m."lastChanged" "message.lastChanged",
             (
@@ -324,6 +343,8 @@ public class ChatRepositoryImpl implements ChatRepository {
             "Chats" c
         left join participants pts
             on c."id" = pts."chatId"
+        left join private_name pn
+            on c."id" = pn."id"
         left join "UsersChats" uc
             on c."id" = uc."chatId"
             and uc."userId" = :userId
@@ -337,7 +358,7 @@ public class ChatRepositoryImpl implements ChatRepository {
         namedParameters.addValue("userId", userId, Types.BIGINT);
         namedParameters.addValue("online", (short) NetworkStatus.ONLINE.toValue(), Types.SMALLINT);
         try {
-            return namedParameterJdbcTemplate.queryForObject(query, namedParameters, new ChatRowMapper());
+            return namedParameterJdbcTemplate.queryForObject(query, namedParameters, new ChatRowMapper(userId));
         } catch (EmptyResultDataAccessException e) {
             return null;
         }

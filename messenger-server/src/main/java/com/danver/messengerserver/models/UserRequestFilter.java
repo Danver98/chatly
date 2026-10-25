@@ -31,7 +31,7 @@ public class UserRequestFilter {
     /**
      * Number of records to fetch
      */
-    private Long count;
+    private Integer count;
 
     /**
      * Array of user identifiers

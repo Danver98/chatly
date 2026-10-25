@@ -36,6 +36,7 @@
 
 .chat-dashboard__right {
     display: flex;
+    position: relative;
     min-height: 0px;
     min-width: 0;
     height: 100%;

@@ -7,7 +7,7 @@ interface IChat {
     private?: boolean;
     avatar?: string | null;
     time?: Date | null;
-    participants?: (number | string)[];
+    participants?: ID[];
     lastMessage?: Message | null;
     draft?: boolean | null;
     unreadMsgCount?: number | null;
@@ -24,7 +24,7 @@ class Chat implements IChat {
     private?: boolean;
     avatar?: string | null;
     time?: Date | null;
-    participants?: (number | string)[];
+    participants?: ID [];
     lastMessage?: Message | null;
     draft?: boolean | null;
     unreadMsgCount?: number | null;
@@ -40,7 +40,7 @@ class Chat implements IChat {
         _private?: boolean,
         avatar?: string | null,
         time?: Date | null,
-        participants?: (number | string)[],
+        participants?: ID[],
         lastMessage?: Message | null,
         draft?: boolean | null,
         unreadMsgCount?: number | null,
