@@ -1,12 +1,12 @@
 import { RefObject, useCallback, useEffect, useRef, useEffectEvent} from "react";
 import Header from "../Blocks/Header/Header"
 import Sidebar from "../Blocks/Sidebar/Sidebar"
-import "./Layout.css";
 import Content from "../Blocks/Content/Content";
 import { useAuthStore } from "../../stores/authStore";
 import { NetworkStatus } from "../../util/Constants";
 import AuthService from "../../services/AuthService";
 import { ID } from "../../util/Types";
+import { Box } from "@mui/material";
 
 const LAST_NETWORK_STATUS_UPDATE_TIME = 'last-network-status-update-time';
 const LAST_VISIBLE_TIME = 'last-visible-time';
@@ -137,13 +137,21 @@ export default function Layout() {
         }  
     }, [pageHide])
     return (
-        <>
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+            {/* Header is fixed at the top */}
             <Header />
-            <div className="main-block">
-                <Sidebar>
-                </Sidebar>
-                <Content />
-            </div>
-        </>
+            
+            {/* Container for Sidebar and Content */}
+            <Box className='main-block'
+                sx={{ display: 'flex', flex: 1, overflow: 'hidden' }}
+            >
+                <Sidebar />
+                
+                {/* The Content needs to flex-grow to fill remaining space */}
+                <Box component="main" sx={{ flexGrow: 1, minWidth: 0, height: '100%' }}>
+                    <Content />
+                </Box>
+            </Box>
+        </Box>
     )
 }

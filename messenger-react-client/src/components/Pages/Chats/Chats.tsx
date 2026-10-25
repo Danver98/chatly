@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Group, Panel, Separator } from "react-resizable-panels";
 import { useFetchChats } from "./FetchData";
 import "./Chats.css";
 import ChatsList from "./ChatsList";
@@ -57,6 +58,7 @@ export default function Chats() {
     const [lastElementRef, setLastElementRef] = useState<Element | null>(null);
     const currentUser = useAuthStore((s) => s.currentLoggedUser);
     const userId = currentUser?.id;
+    const [search, setSearch] = useState<string|null>(null);
 
     const chats = useChatStore((s) => s.chats);
     const activeChat = useChatStore((s) => s.activeChat);
@@ -187,7 +189,7 @@ export default function Chats() {
 
     const handleClick = useCallback(
         (chat: Chat) => {
-            if (userId && chat.id != null) void openChatById(chat.id, userId);
+            if (userId && chat.id != null) openChatById(chat.id, userId);
         },
         [openChatById, userId],
     );
@@ -195,55 +197,69 @@ export default function Chats() {
     const handleChatCreation = useCallback(
         (users: any[], params?: ChatCreationParams | null) => {
             if (!currentUser?.id) return;
-            void useChatStore
+            useChatStore
                 .getState()
                 .createChatFromParticipants(currentUser.id, users, params ?? null);
         },
         [currentUser?.id],
     );
 
+    const onSearchChange = useCallback((value: string | null) => {
+        const s = value ? value : null;
+        if (!s || s.length === 0) setSearch(s);
+        if (s && s.length < 3) return;
+        setSearch(s);
+    }, []);
+
     return (
         <div className="chat-page">
             <div className="chat-dashboard">
-                <div className="chat-dashboard__left">
-                    <SearchBar onChange={() => {}} />
-                    <ChatsList
-                        chats={chats}
-                        ref={setLastElementRef}
-                        itemClickHandler={handleClick}
-                    />
-                    <ChatCreation
-                        user={currentUser}
-                        open={creationDialogOpen}
-                        onClose={() => setCreationDialogOpen(false)}
-                        onResult={(elements, params) => handleChatCreation(elements, params)}
-                    />
-                </div>
-                <div className="chat-dashboard__right">
-                    {activeChat && (
-                        <ChatRoom chat={activeChat} closeChat={closeActiveChat} />
-                    )}
-                    {activeChat == null && (
-                        <div className="chat-room__empty" style={{ position: 'relative' }}>
-                            <div>Select chat to start messaging</div>
-                            <Button
-                                variant="contained"
-                                onClick={() => setCreationDialogOpen(true)}
-                                sx={{
-                                    position: "absolute",
-                                    bottom: 20,
-                                    right: 20,
-                                    width: '60px',
-                                    height: '60px',
-                                    borderRadius: '50%',
-                                    minWidth: 0, // override MUI's default Button min-width for round buttons
-                                }}
-                            >
-                                Go
-                            </Button>
+                <Group orientation="horizontal" className="chat-dashboard-group">
+                    <Panel defaultSize="30%" minSize="10%" maxSize="80%">
+                        <div className="chat-dashboard__left">
+                            <SearchBar onChange={onSearchChange} />
+                            <ChatsList
+                                chats={chats}
+                                ref={setLastElementRef}
+                                itemClickHandler={handleClick}
+                            />
+                            <ChatCreation
+                                user={currentUser}
+                                open={creationDialogOpen}
+                                onClose={() => setCreationDialogOpen(false)}
+                                onResult={(elements, params) => handleChatCreation(elements, params)}
+                            />
                         </div>
-                    )}
-                </div>
+                    </Panel>
+                    <Separator className="chat-resize-handle" />
+                    <Panel>
+                        <div className="chat-dashboard__right">
+                            {activeChat && (
+                                <ChatRoom chat={activeChat} closeChat={closeActiveChat} />
+                            )}
+                            {activeChat == null && (
+                                <div className="chat-room__empty" style={{ position: 'relative' }}>
+                                    <div>Select chat to start messaging</div>
+                                    <Button
+                                        variant="contained"
+                                        onClick={() => setCreationDialogOpen(true)}
+                                        sx={{
+                                            position: "absolute",
+                                            bottom: 20,
+                                            right: 20,
+                                            width: '60px',
+                                            height: '60px',
+                                            borderRadius: '50%',
+                                            minWidth: 0, // override MUI's default Button min-width for round buttons
+                                        }}
+                                    >
+                                        Go
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </Panel>
+                </Group>
             </div>
         </div>
     );

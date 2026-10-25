@@ -82,7 +82,7 @@ public class ChatRepositoryImpl implements ChatRepository {
         """;
             namedParameterJdbcTemplate.update(query, params);
         }
-        return this.getChat(id, null);
+        return this.getChat(id, chat.getAuthorId());
     }
 
     @Override
@@ -358,7 +358,7 @@ public class ChatRepositoryImpl implements ChatRepository {
         namedParameters.addValue("userId", userId, Types.BIGINT);
         namedParameters.addValue("online", (short) NetworkStatus.ONLINE.toValue(), Types.SMALLINT);
         try {
-            return namedParameterJdbcTemplate.queryForObject(query, namedParameters, new ChatRowMapper(userId));
+            return namedParameterJdbcTemplate.queryForObject(query, namedParameters, new ChatRowMapper());
         } catch (EmptyResultDataAccessException e) {
             return null;
         }
@@ -503,7 +503,7 @@ public class ChatRepositoryImpl implements ChatRepository {
 
     @Override
     public Chat getOrCreate(Chat chat) {
-        Chat existing = this.getChat(chat.getId(), null);
+        Chat existing = this.getChat(chat.getId(), chat.getAuthorId());
         if (existing != null) return existing;
         return this.createChat(chat);
     }

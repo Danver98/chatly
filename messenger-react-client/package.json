@@ -28,6 +28,7 @@
     "react-hot-toast": "^2.6.0",
     "react-intersection-observer": "^10.0.3",
     "react-lorem-ipsum": "^1.4.10",
+    "react-resizable-panels": "^4.15.0",
     "react-router-dom": "^7.14.1",
     "react-stomp": "^5.1.0",
     "react-stomp-hooks": "^3.0.1",
