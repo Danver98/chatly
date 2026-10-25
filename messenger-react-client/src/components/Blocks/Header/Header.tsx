@@ -6,6 +6,7 @@ export default function Header() {
         <>
             <div className="header">
                 <div style={{
+                    fontSize: '18px',
                     fontFamily: 'Leckerli One',
                     color: '#FFFFFF',
                     fontWeight: 'normal',
