@@ -118,8 +118,8 @@ CREATE TABLE IF NOT EXISTS "RefreshTokens"
     "statusUpdateTime" timestamp with time zone
 );
 CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_user_device
-    ON "RefreshTokens" ("user", "device")
-    NULLS NOT DISTINCT;
+    ON "RefreshTokens" ("user", "device") NULLS NOT DISTINCT
+    WHERE "token" IS NOT NULL;
 
 
 

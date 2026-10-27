@@ -176,7 +176,7 @@ function MembersList({chatId, parentCloseHandler}: { chatId: ID, parentCloseHand
     const onUserDialogClose = React.useCallback((closeAll: boolean = false) => {
         setUserDialogOpen(false);
         setSelectedUser(null);
-        if (closeAll) parentCloseHandler();
+        if (typeof closeAll === 'boolean' && closeAll) parentCloseHandler();
     }, [parentCloseHandler]);
 
     const onSearchChange = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {

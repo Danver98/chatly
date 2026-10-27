@@ -109,100 +109,105 @@ const JoinChatLink = ({ chatId, link }: { chatId: ID, link: string }) => {
 }
 
 const MessageBody = ({ message, user, messageActions }: { message: Message, user?: User | null, messageActions?: IMessageActions }) => {
-    const alignment = message.author?.id === user?.id ? 'right' : 'left';
     const authorName = message.author?.name ?? '';
-    const authorSurname = message.author?.name ?? '';
+    const authorSurname = message.author?.surname ?? '';
+    const isOwnMessage = message.author?.id === user?.id;
     return (
-        <div className={`message-list-item_container align-items-${alignment}`}>
-            <div className="message-list-item__userBlock">
-                {
-                    (message.author?.id !== user?.id) &&
-                    <Avatar
-                        className="message-list-item__userImage"
-                        src={message.author?.avatar ?? BROKEN_IMAGE_URL}
-                        alt={`${authorName[0]}${authorSurname[0]}`}
-                        children={`${authorName[0]}${authorSurname[0]}`}
-                        sx={{
-                            width: 50,
-                            height: 50,
-                            marginRight: '4px',
-                            bgcolor: stringToColor(message.getAuthorFullName() ?? '')
-                        }}
-                    />
-                }
-            </div>
-            <div className="message-list-item__messageBlock">
-                <div className="message-list-item__UserName">
-                    {/* {message.author?.name + ' ' + message.author?.surname} */}
-                    {message.id}
-                </div>
-                {
-                    message.replyTo && message.repliedMessage &&
-                    <ReplyBlock
-                        user={message.repliedMessage.author?.name + ' ' + message.repliedMessage.author?.surname}
-                        message={message.repliedMessage.data?.data} clickHandler={() => { messageActions?.replyHandler?.(message.repliedMessage)}}
-                    />
-                }
-                {
-                    !message.replyTo && message.type === MessageType.REPLY &&
-                    <ReplyBlock message={MESSAGE_DELETED_TEXT} />
-                }
-                <p className="message-list-item__messageData">
+        <div className='message-list-item-wrapper'>
+            {
+                !isOwnMessage && (
+                    <div className="message-list-item__userBlock">
+                        {
+                            <Avatar
+                                className="message-list-item__userImage"
+                                src={message.author?.avatar ?? BROKEN_IMAGE_URL}
+                                alt={`${authorName[0]}${authorSurname[0]}`}
+                                children={`${authorName[0]}${authorSurname[0]}`}
+                                sx={{
+                                    width: 50,
+                                    height: 50,
+                                    marginRight: '4px',
+                                    bgcolor: stringToColor(message.getAuthorFullName() ?? '')
+                                }}
+                            />
+                        }
+                    </div>
+                )
+            }
+            <div className={`message-list-item_container`}>
+                <div className="message-list-item__messageBlock">
+                    <div className="message-list-item__UserName">
+                        {/* {message.author?.name + ' ' + message.author?.surname} */}
+                        {message.id}
+                    </div>
                     {
-                        (message.data?.type === MessageDataType.TEXT ||
-                            message.data?.type === MessageDataType.DEFAULT) && message.data?.data
-                    }
-                    {
-                        (message.data?.type === MessageDataType.JOIN_LINK) && message.data?.data &&
-                        <JoinChatLink chatId={message.chatId} link={message.data?.data} />
-                    }
-                    {
-                        message.data?.type === MessageDataType.IMAGE && message.data?.data &&
-                        <img
-                            src={message.data?.data}
-                            alt="Couldn't load image"
-                            className="message-list-item_image"
+                        message.replyTo && message.repliedMessage &&
+                        <ReplyBlock
+                            user={message.repliedMessage.author?.name + ' ' + message.repliedMessage.author?.surname}
+                            message={message.repliedMessage.data?.data} clickHandler={() => { messageActions?.replyHandler?.(message.repliedMessage)}}
                         />
                     }
                     {
-                        message.data?.type === MessageDataType.AUDIO && message.data?.data &&
-                        <audio
-                            src={message.data?.data}
-                            preload="metadata"
-                            controls
-                            className="message-list-item_audio"
-                        />
+                        !message.replyTo && message.type === MessageType.REPLY &&
+                        <ReplyBlock message={MESSAGE_DELETED_TEXT} />
                     }
-                    {
-                        message.data?.type === MessageDataType.VIDEO && message.data?.data &&
-                        <video
-                            src={message.data?.data}
-                            preload="metadata"
-                            controls
-                            className="message-list-item_video"
-                        />
-                    }
-                    {
-                        message.data?.type === MessageDataType.FILE && message.data?.data &&
-                        <div
-                            className="message-list-item_file"
-                        >
-                            <a
-                                href={message.data?.data}
-                                download
+                    <p className="message-list-item__messageData">
+                        {
+                            (message.data?.type === MessageDataType.TEXT ||
+                                message.data?.type === MessageDataType.DEFAULT) && message.data?.data
+                        }
+                        {
+                            (message.data?.type === MessageDataType.JOIN_LINK) && message.data?.data &&
+                            <JoinChatLink chatId={message.chatId} link={message.data?.data} />
+                        }
+                        {
+                            message.data?.type === MessageDataType.IMAGE && message.data?.data &&
+                            <img
+                                src={message.data?.data}
+                                alt="Couldn't load image"
+                                className="message-list-item_image"
+                            />
+                        }
+                        {
+                            message.data?.type === MessageDataType.AUDIO && message.data?.data &&
+                            <audio
+                                src={message.data?.data}
+                                preload="metadata"
+                                controls
+                                className="message-list-item_audio"
+                            />
+                        }
+                        {
+                            message.data?.type === MessageDataType.VIDEO && message.data?.data &&
+                            <video
+                                src={message.data?.data}
+                                preload="metadata"
+                                controls
+                                className="message-list-item_video"
+                            />
+                        }
+                        {
+                            message.data?.type === MessageDataType.FILE && message.data?.data &&
+                            <div
+                                className="message-list-item_file"
                             >
-                                <FilePresentIcon
-                                    fontSize="large"
-                                    color="primary"
-                                />
-                            </a>
-                            <span>{(message.data?.data as string)
-                                .substring((message.data?.data as string).lastIndexOf('/') + 1)}</span>
-                        </div>
-                    }
-                </p>
-                <div className="message-list-item__messageBlock-date">
-                    <div>{message.time?.toLocaleDateString("ru") + ' | ' + message.time?.toLocaleTimeString("ru")}</div>
+                                <a
+                                    href={message.data?.data}
+                                    download
+                                >
+                                    <FilePresentIcon
+                                        fontSize="large"
+                                        color="primary"
+                                    />
+                                </a>
+                                <span>{(message.data?.data as string)
+                                    .substring((message.data?.data as string).lastIndexOf('/') + 1)}</span>
+                            </div>
+                        }
+                    </p>
+                    <div className="message-list-item__messageBlock-date">
+                        <div>{message.time?.toLocaleDateString("ru") + ' | ' + message.time?.toLocaleTimeString("ru")}</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -237,12 +242,13 @@ const MessageListItem = forwardRef(( { message, user, index, observer, clickHand
     }, [observer]);
 
     const contextMenuHandler = messageActions.contextMenuHandler;
+    const alignment = message.author?.id === user?.id ? 'right' : 'left';
     return (
         <li
             id={messageId}
             data-item-index={index}
             onClick={clickHandler ? () => clickHandler(message.id) : undefined}
-            className="message-list-item"
+            className={`message-list-item align-items-${alignment}`} 
             tabIndex={-1}
             ref={setRef}
             onContextMenu={contextMenuHandler ? (e) => contextMenuHandler(e, message) : undefined}

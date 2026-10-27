@@ -45,7 +45,7 @@ public interface RefreshTokenRepository extends CrudRepository<RefreshToken, Lon
      * @return
      */
     @Cacheable(value = "token", key = "#userId + ':' + #deviceId")
-    @Query("SELECT \"token\" FROM \"RefreshTokens\" WHERE \"user\" = :userId AND \"device\" IS NOT DISTINCT FROM :deviceId")
+    @Query("SELECT \"token\" FROM \"RefreshTokens\" WHERE \"user\" = :userId AND \"device\" IS NOT DISTINCT FROM :deviceId and \"token\" IS NOT NULL")
     String findTokenByUserIdAndDeviceId(@Param("userId") Long userId, @Param("deviceId") String deviceId);
 
     /**
@@ -66,7 +66,15 @@ public interface RefreshTokenRepository extends CrudRepository<RefreshToken, Lon
             @CacheEvict(value = "token", key = "#userId + ':' + #deviceId")
     })
     @Modifying
-    @Query("DELETE FROM \"RefreshTokens\" WHERE \"user\" = :userId AND \"device\" = :deviceId")
+    @Query("""
+      update
+          "RefreshTokens"
+      set
+          "token" = null
+      where
+          "user" = :userId
+          and "device" = :deviceId
+    """)
     void deleteByUserIdAndDevice(@Param("userId") Long userId, @Param("deviceId") String deviceId);
 
     /**
@@ -97,7 +105,14 @@ public interface RefreshTokenRepository extends CrudRepository<RefreshToken, Lon
      * @return
      */
     @Modifying
-    @Query("DELETE FROM \"RefreshTokens\" WHERE id IN (:ids)")
+    @Query("""
+        update
+            "RefreshTokens"
+        set
+            "token" = null
+        where
+            "id" = any(:ids::bigint[])
+    """)
     int deleteAllByIds(@Param("ids") List<Long> ids);
 
     /**

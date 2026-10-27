@@ -245,30 +245,47 @@
 
 .message-list-item {
     display: flex;
-    padding: 0px 16px 0px 0px;
+    flex-direction: row;
     min-width: 0;
-    box-shadow: 3px 0px 5px 1px rgb(213, 218, 217);
+    padding: 4px 16px; 
+    /*box-shadow: 3px 0px 5px 1px rgb(213, 218, 217);*/
 
     &:focus-visible {
         outline: none;
     }
 }
 
+.message-list-item-wrapper {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end; 
+    gap: 8px;
+    max-width: 75%; 
+}
+
 .message-list-item_container {
     display: flex;
-    flex: 1 1 0;
+    flex: 0 1 auto; /* Don't force grow, allow shrink */
     min-width: 0;
-    padding: 8px 0px 8px 0px;
+    width: fit-content; /* Only as wide as the text */
+    max-width: 100%;
+    /* Add some breathing room inside the bubble */
+    padding: 8px 12px; 
+    
+    /* Make it look like a modern chat bubble */
+    background-color: #f0f0f0; /* light grey instead of harsh brown */
+    border-radius: 8px;
+    
+    /* Adds the vertical space between messages you are currently missing */
+    margin-bottom: 8px; 
 }
 
 .align-items-left {
-    display: flex;
-    align-items: flex-start;
+    justify-content: flex-start;
 }
 
 .align-items-right {
-    display: flex;
-    align-items: flex-end;
+    justify-content: flex-end;
 }
 
 .message-list-item__userBlock {

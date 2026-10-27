@@ -25,7 +25,7 @@ export default defineConfig(({ command }) => {
         hmr: {
           protocol: 'wss',    // Browser talks to Nginx over HTTPS, so HMR must be WSS
           host: 'localhost',  // The hostname your browser uses
-          clientPort: 443,    // Nginx's HTTPS port — NOT the Vite container port
+          clientPort: 3000,    // Nginx's HTTPS port — NOT the Vite container port
         },
       },
     };
